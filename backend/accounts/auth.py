@@ -1,7 +1,10 @@
-"""Signing in, with protection against guessing PINs.
+"""Signing in, with protection against guessing PINs and passwords.
 
 - An account is locked for a few minutes after too many wrong PINs.
 - An IP address is blocked for a while after too many failures overall.
+
+The app's sign-in and the admin's (accounts.forms) both go through
+check_credentials(), so neither is an easier way in.
 """
 
 from datetime import timedelta
@@ -33,6 +36,13 @@ def _ip_blocked(ip):
 
 
 def sign_in(request, username, secret):
+    user = check_credentials(request, username, secret)
+    login(request, user)
+    return user
+
+
+def check_credentials(request, username, secret):
+    """The user with this username and PIN (or password). Raises SignInError."""
     ip = client_ip(request)
     if _ip_blocked(ip):
         raise SignInError(
@@ -43,8 +53,9 @@ def sign_in(request, username, secret):
     user = User.objects.filter(username__iexact=(username or "").strip()).first()
     if user and user.locked_until and user.locked_until > now:
         minutes = max(1, round((user.locked_until - now).total_seconds() / 60))
+        tries = "PINs" if user.kind == User.Kind.STUDENT else "passwords"
         raise SignInError(
-            f"This account is locked for {minutes} more minute{'s' if minutes != 1 else ''} after too many wrong PINs.",
+            f"This account is locked for {minutes} more minute{'s' if minutes != 1 else ''} after too many wrong {tries}.",
             status=429,
         )
     if user is None or not user.is_active or not user.check_password(secret or ""):
@@ -61,7 +72,6 @@ def sign_in(request, username, secret):
         user.failed_logins = 0
         user.locked_until = None
         user.save(update_fields=["failed_logins", "locked_until"])
-    login(request, user)
     return user
 
 

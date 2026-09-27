@@ -413,9 +413,17 @@ backend):
 - **Web editing**: in the Django admin (Curriculum → Lessons), a lesson's
   blocks are edited as YAML in a large text box. Multi-line text is shown as
   readable `|` blocks.
-  - **Saving runs the full checker in a separate process**, with a time and
-    memory limit, so lesson code never runs inside the web server. A lesson
-    with problems isn't saved, and the problems are listed.
+  - **Saving runs the full checker**, and a lesson with problems isn't
+    saved (the problems are listed). Lesson code is real Python, and the
+    simulator's import rules don't stop a determined author, so it never
+    runs inside the web server. In production it runs in the `checker`
+    container (`trainer_content.server`): no network, no secrets, a
+    read-only disk, and limits on memory and processes. Django reaches it
+    through a Unix socket in a shared volume. Each check is a process of its
+    own with a time limit, a memory limit, no new processes and no file
+    writes (`trainer_content.sandbox`). If the checker isn't running,
+    lessons can't be saved. In development the check runs in that limited
+    process on your computer.
   - Worlds, the robot and playground challenges have YAML editors too.
   - "Open ↗" previews the lesson on the site. Staff can see unpublished
     lessons.
@@ -603,11 +611,13 @@ See **[DEPLOY.md](DEPLOY.md)** for the step-by-step guide. In short:
 - **First boot** (`deploy/aws/bootstrap.sh`): Ubuntu's Docker packages, the
   AWS CLI, a swap file, `deploy/.env` with secrets generated on the server,
   and a nightly backup job.
-- **Docker Compose** (`deploy/docker-compose.yml`) runs three containers:
+- **Docker Compose** (`deploy/docker-compose.yml`) runs four containers:
   - `caddy`: automatic HTTPS; serves the built app and Pyodide; proxies
     `/api`, `/admin` and `/static`.
   - `web`: Django on gunicorn. On start it migrates the database and
     re-imports `content/`, but only if every lesson passes its checks.
+  - `checker`: runs the code in lessons saved in the admin (§7.3), walled
+    off from everything else. It uses the `web` image.
   - `db`: PostgreSQL 17 on a persistent volume.
   The images are `$IMAGE_REPO/web:<commit>` and `$IMAGE_REPO/caddy:<commit>`.
 - **Continuous deployment** (GitHub Actions):
@@ -710,6 +720,7 @@ python-trainer/
 | 2026-09-27 | Lessons are YAML files with code inline, paged after each interactive block. Quizzes gate progress; challenges can be skipped. |
 | 2026-09-27 | Content is served from the database, with solutions only for coaches, mentors and staff. Guests keep progress in the browser, and it's imported when they sign up. |
 | 2026-09-27 | Admin lesson saves run the checker in a separate process with time and memory limits. Lessons from files are re-imported on each deploy, and the admin warns about this. |
+| 2026-09-27 | Lesson code from the admin runs in its own `checker` container (no network, no secrets, read-only disk), not next to the web server, so a staff account that can edit lessons can't reach the database or the secret key. The admin's sign-in has the same lockouts as the app's. |
 | 2026-09-27 | `stop()` coasts and `brake()` stops sooner, like a real robot, so proportional control is worth learning. |
 | 2026-09-27 | Coach tools: coaches and mentors see their team's work; only coaches change accounts, and only kids' accounts. PINs are shown once, on printable cards. |
 | 2026-09-27 | Running on a real robot: lessons keep using the Trainer Bot, and code is rewritten for the team's robot (ports, directions, wheel sizes) when it's copied to Pybricks. Simulating each team's own robot comes later. |

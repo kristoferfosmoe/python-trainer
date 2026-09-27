@@ -39,8 +39,11 @@ COPY backend/ ./
 COPY sim/src /app/sim/src
 COPY content /app/content
 COPY deploy/start-web.sh /app/start-web.sh
+# /run/checker holds the socket Django uses to reach the lesson checker
+# container (docker-compose.yml).
 RUN DJANGO_ENV=production DJANGO_SECRET_KEY=only-for-collectstatic python manage.py collectstatic --noinput -v0 \
-    && useradd --create-home --uid 1000 trainer
+    && useradd --create-home --uid 1000 trainer \
+    && mkdir -p /run/checker && chown trainer:trainer /run/checker
 # The git commit, shown by /api/health (CI passes --build-arg APP_VERSION=<sha>).
 ARG APP_VERSION=dev
 ENV APP_VERSION=$APP_VERSION

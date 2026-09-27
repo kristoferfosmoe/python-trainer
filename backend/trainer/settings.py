@@ -150,8 +150,10 @@ LOGIN_ACCOUNT_LOCK_MINUTES = 5
 LOGIN_IP_MAX_FAILURES = 30
 LOGIN_IP_WINDOW_MINUTES = 15
 
-# Lessons saved in the admin are checked in a separate process.
+# Lessons saved in the admin are checked in a separate process: in production,
+# in the checker container, reached through this socket (see curriculum.library).
 LESSON_CHECK_TIMEOUT = int(os.environ.get("LESSON_CHECK_TIMEOUT", "90"))
+LESSON_CHECKER_SOCKET = os.environ.get("LESSON_CHECKER_SOCKET", "")
 
 # The git commit this server runs, baked into the image by CI (see deploy/Dockerfile).
 APP_VERSION = os.environ.get("APP_VERSION", "dev")

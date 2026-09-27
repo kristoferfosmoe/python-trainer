@@ -203,6 +203,7 @@ cd /opt/python-trainer/deploy
 sudo docker compose ps                    # what's running
 sudo docker compose logs -f web           # Django's log (Ctrl+C to stop)
 sudo docker compose logs -f caddy         # HTTPS and web server log
+sudo docker compose logs -f checker       # the lesson checker (admin lesson saves)
 cat /var/log/python-trainer-deploys.log   # deploy history
 sudo ./manage.sh import_content           # reload the lessons now
 ```
@@ -270,6 +271,7 @@ sudo docker compose restart web
 | The *Push images* and *Deploy* jobs are skipped | `DEPLOY_TO_AWS` isn't `true`, or it wasn't a push to `main`. |
 | GitHub: *"Not authorized to perform sts:AssumeRoleWithWebIdentity"* | AWS didn't accept who GitHub says the job is. The step *Show who GitHub says this job is* prints it: its `sub` must be `repo:<owner>/<repo>:ref:refs/heads/main` (or `…:environment:production` for *Deploy*; GitHub may add ID numbers, like `<owner>@123/<repo>@456`, which the stack accepts), matching the stack's `GitHubRepository` and `GitHubBranch`. Also check `AWS_DEPLOY_ROLE_ARN`. |
 | "Bad Request (400)" in the browser | The domain doesn't match `DJANGO_ALLOWED_HOSTS` in `/opt/python-trainer/deploy/.env`. Fix it and run `sudo docker compose up -d`. |
+| Admin: *"The lesson checker isn't running"* when saving a lesson | `sudo docker compose ps checker` and `sudo docker compose logs checker`; `sudo docker compose up -d` starts it again. |
 | A student is locked out | Wait 5 minutes, or their coach unlocks them on the student's page. |
 | Python never starts in the browser | Some school networks block WebAssembly. Try another network and check the browser console. |
 
@@ -285,6 +287,11 @@ sudo docker compose restart web
   readable only by root) and never leave it.
 - The containers can't reach the server's AWS credentials (IMDSv2 with a
   hop limit of 1). The disk and the backups are encrypted.
+- **Lesson code from the admin runs in the `checker` container**, which has
+  no network, no secrets and a read-only disk. So a staff account that can
+  edit lessons can't use lesson code to reach the database or the secret key.
+- **The admin's sign-in** (`/admin/login/`) has the same lockouts as the
+  app's, so it isn't an easier place to guess passwords.
 - Ubuntu installs security updates by itself (`unattended-upgrades`). Each
   deploy builds on the newest Python and Caddy base images, and ECR scans
   every image (see the findings in the ECR console). The PostgreSQL image is

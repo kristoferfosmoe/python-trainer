@@ -167,3 +167,43 @@ def test_reset_pin_admin_action(student, team):
     new_pin = next(m for m in messages if m.startswith("New PIN")).rsplit(" ", 1)[1]
     student.refresh_from_db()
     assert student.check_password(new_pin)
+
+
+ADMIN_PASSWORD = "a very long admin password"
+
+
+def admin_login(client, username, password):
+    return client.post("/admin/login/?next=/admin/", {"username": username, "password": password})
+
+
+def test_admin_sign_in_works_for_staff_only(student):
+    make_user("site_admin", kind=User.Kind.ADULT, secret=ADMIN_PASSWORD, is_staff=True)
+    client = Client()
+    response = admin_login(client, "site_admin", ADMIN_PASSWORD)
+    assert response.status_code == 302
+    assert client.get("/admin/").status_code == 200
+    kid = admin_login(Client(), "BraveOtter42", PIN)
+    assert kid.status_code == 200
+    assert "staff account" in kid.content.decode()
+
+
+def test_admin_sign_in_locks_like_the_app(settings):
+    settings.LOGIN_IP_MAX_FAILURES = 100
+    make_user("site_admin", kind=User.Kind.ADULT, secret=ADMIN_PASSWORD, is_staff=True)
+    client = Client()
+    for _ in range(settings.LOGIN_ACCOUNT_MAX_FAILURES):
+        assert admin_login(client, "site_admin", "guess guess guess").status_code == 200
+    locked = admin_login(client, "site_admin", ADMIN_PASSWORD)
+    assert locked.status_code == 200
+    assert "locked for 5 more minutes after too many wrong passwords" in locked.content.decode()
+    assert "_auth_user_id" not in client.session
+
+
+def test_admin_sign_in_counts_toward_the_computer_block(student, settings):
+    settings.LOGIN_IP_MAX_FAILURES = 2
+    client = Client()
+    for name in ["a1x", "b2y"]:
+        admin_login(client, name, "guess guess guess")
+    blocked = post(client, "/api/auth/login", {"username": "BraveOtter42", "secret": PIN})
+    assert blocked.status_code == 429
+    assert "this computer" in admin_login(client, "BraveOtter42", PIN).content.decode()
