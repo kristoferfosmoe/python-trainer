@@ -1,0 +1,13 @@
+# A crate blocks the straight path to the flag.
+id: obstacle-course
+name: Obstacle Course
+size: [2362, 1143]
+background: white
+grid: 100
+start: {x: 200, y: 300, heading: 0}
+shapes:
+  - {type: circle, x: 1200, y: 300, r: 45, color: red}
+zones:
+  - {id: flag, label: Flag, type: circle, x: 1200, y: 300, r: 110}
+obstacles:
+  - {label: crate, type: rect, x: 700, y: 200, w: 200, h: 200}

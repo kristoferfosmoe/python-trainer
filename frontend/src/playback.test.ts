@@ -24,6 +24,7 @@ function makeTrace(): Trace {
     ],
     end: { reason: "finished", t: 40, line: 3 },
     warnings: [],
+    structure: [],
     goals: [],
     stats: { lines: 3, sim_ms: 40, wall_ms: 1 },
   };

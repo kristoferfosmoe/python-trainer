@@ -4,8 +4,9 @@
 
 import { loadPyodide } from "pyodide";
 
-// The simulator's Python source, bundled from sim/src.
-const simFiles = import.meta.glob("../../../sim/src/**/*.py", {
+// The simulator's Python source, bundled from sim/src (the lesson checker,
+// trainer_content, is only for tests and the server).
+const simFiles = import.meta.glob(["../../../sim/src/**/*.py", "!../../../sim/src/trainer_content/**"], {
   query: "?raw",
   import: "default",
   eager: true,

@@ -1,5 +1,6 @@
 """Run a student's program in the simulator and return a trace."""
 
+import ast
 import builtins
 import io
 import json
@@ -94,6 +95,32 @@ def _execute(sim, compiled, code, seed):
         context.set_current(None)
 
 
+def code_structure(code):
+    """Loops and if-statements with the lines of their bodies, for the visualizer."""
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return []
+    lines = code.splitlines()
+    found = []
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.For, ast.While, ast.If)):
+            entry = {
+                "line": node.lineno,
+                "body": [node.body[0].lineno, node.body[-1].end_lineno],
+            }
+            if isinstance(node, ast.For):
+                entry["kind"] = "for"
+                entry["target"] = ast.unparse(node.target)
+            elif isinstance(node, ast.While):
+                entry["kind"] = "while"
+            else:
+                text = lines[node.lineno - 1].lstrip() if node.lineno <= len(lines) else ""
+                entry["kind"] = "elif" if text.startswith("elif") else "if"
+            found.append(entry)
+    return sorted(found, key=lambda e: e["line"])
+
+
 def run_program(code, world, robot, options=None, goals=None):
     """Run `code` and return everything the browser needs to replay it."""
     options = options or {}
@@ -120,6 +147,7 @@ def run_program(code, world, robot, options=None, goals=None):
         "start": {"x": sim.start[0], "y": sim.start[1], "heading": sim.start[2]},
         "end": end,
         "warnings": warnings,
+        "structure": code_structure(code),
         "goals": check_goals(goals, sim.world, recording, end, code, sim),
     }
     result.update(recording)

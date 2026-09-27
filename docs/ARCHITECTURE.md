@@ -259,26 +259,40 @@ an automatic first goal: "Program runs without errors".
 | `avoid_zones` | `{type: avoid_zones, zones: [pit]}` |
 | `no_collisions` | Don't bump into walls or obstacles |
 | `max_time` | `{type: max_time, seconds: 30}` |
-| `must_use` | `{type: must_use, construct: for}`. Also `while`, `if`, `def`, `list` or `variable` (checked by parsing the code). |
-| `max_calls` | `{type: max_calls, name: straight, value: 1}`. Encourages loops and functions. |
+| `must_use` | `{type: must_use, construct: for}`. Also `while`, `if`, `def`, `list`, `variable`, `fstring`, `floor_divide` (`//`) or `modulo` (`%`) (checked by parsing the code). |
+| `max_calls` | `{type: max_calls, name: straight, value: 1}`. Encourages loops and functions. `value: 0` means "don't use it" (e.g. drive with motors instead). |
+| `uses_variable_in` | `{type: uses_variable_in, name: straight}`. Every call gets a variable, not a plain number. |
 | `printed` | `{type: printed, text: "Found it"}` |
 
 ## 5. Code visualizer
 
-The visualizer is read-only. It has play, pause, replay and speed controls,
-but students don't build anything with it. It uses the same line and variable
-recording as the simulator.
+The visualizer is read-only. Students watch it; they don't build anything
+with it. It uses the same recording as the robot playback, in two modes.
 
-- **During challenge runs**: the current line is highlighted in the editor, a
-  variables panel flashes values as they change, and the console prints in
-  sync with the robot.
-- **"Visualize" lesson blocks**: a code sample runs step by step with a loop
-  iteration counter, the `if`/`else` branch taken shown in green (the skipped
-  one in gray), and changing variables shown next to the code.
+**Robot time (challenges)**: the trace plays at real speed (0.5× to 4×) with a
+scrubber. The running line is highlighted in the editor. The console,
+variables (changed values flash) and sensor readings follow the robot.
 
-Several lines can run at the same simulated time. So playback has two modes:
-**robot time** (real timing, for challenges) and **step mode** (every line
-gets its own beat, for learning).
+**Step mode** (`visualize` blocks, and "👣 Step through" on any example) shows
+one line at a time. The controls are start, back, play/pause, forward and a
+speed setting. For each step it shows:
+
+- **The line about to run**, highlighted.
+- **How many times each line has run**, in a gutter (`×3`). This makes loops
+  and skipped branches visible at a glance.
+- **A note on the current line**, computed from the program's structure
+  (`trace.structure`: every `for`, `while`, `if` and `elif`, with the lines of
+  its body) and from the next step:
+  - `if`/`elif`: "✔ True: runs the indented lines" or "✖ False: skips them".
+  - `for`: "🔁 round 2: side = 1", with the loop variable's next value.
+  - `while`: "🔁 round 2: condition is True", then "✅ loop done after 3 rounds".
+  - While inside a loop, the loop's first line keeps a "🔁 round k" badge.
+- **Variables and output so far**, next to the code.
+
+Timing: every recorded print and step is stamped to 0.01 ms, and a print
+made by line *k* has the same time as step *k + 1*. So output appears exactly
+when the student steps past the line that printed it. Step mode shows up to
+5000 steps; content checks reject `visualize` blocks that need more.
 
 ## 6. Kid-friendly errors
 
@@ -301,61 +315,80 @@ explanations come from a curated list, with no AI involved. Examples:
 
 **Course → Unit → Lesson → Blocks**. There are five block types:
 
-| Block | Purpose |
-|---|---|
-| `text` | Markdown explanation, with images |
-| `example` | Read-only code the student can run and see the output of |
-| `visualize` | Step-by-step animation of a code sample (§5) |
-| `quiz` | Multiple choice or "predict the output" |
-| `challenge` | Editor + simulator + goals + hints (the main activity) |
+| Block | Purpose | Fields |
+|---|---|---|
+| `text` | Markdown explanation (Python code fences are highlighted) | `markdown` |
+| `example` | Code the student can run, edit and step through; shows output and errors | `code`, `expect_error` |
+| `visualize` | Opens in step mode (§5); students can still edit and re-run | `code`, `expect_error` |
+| `quiz` | Multiple choice. `check: output` is "what does this print?": the checker runs `code` and makes sure the answer matches the real output. | `question`, `code`, `choices` (text, or `{text, why}`), `answer` (index from 0), `explain`, `check` |
+| `challenge` | Editor + simulator + goals + hints. Without `world` it's a console-only challenge. `ref:` reuses a playground challenge. | same as a playground challenge file |
 
-### 7.2 Lesson file format
+Every block gets an `id` (given, or `block-N` from its position), which
+progress and saved code are keyed on.
 
-The curriculum we write lives as files in `content/` so it can be reviewed and
-versioned in git:
+### 7.2 Lesson files
+
+```
+content/courses/fll-python/course.yaml            # id, title, summary
+content/courses/fll-python/01-meet-the-robot/unit.yaml     # id, title, icon, summary
+content/courses/fll-python/01-meet-the-robot/01-hello-python.yaml
+content/courses/fll-python/01-meet-the-robot/02-first-moves.yaml
+content/challenges/*.yaml                          # playground challenges
+```
+
+Units and lessons are ordered by their file names. Code is written inline in
+the YAML, which keeps each lesson a single JSON document for the database
+(milestone 3). A short example:
 
 ```yaml
-# content/fll-python/03-loops/drive-a-square/lesson.yaml
-id: drive-a-square
-title: Drive in a Square
-concepts: [for-loop, range]
+id: for-loops
+title: Repeat with for
+summary: Use a for loop to repeat code a set number of times.
 blocks:
   - type: text
     markdown: |
-      Robots do the same thing over and over. Instead of copying code,
-      we can tell Python to **repeat** it.
+      Robots do the same thing again and again...
   - type: visualize
     code: |
       for side in range(4):
-          print("Driving side", side)
+          print("Round", side)
   - type: quiz
-    question: How many times will the loop run?
-    choices: ["3", "4", "5"]
+    check: output
+    question: What does this program print?
+    code: |
+      for i in range(3):
+          print("beep")
+    choices: ["beep", "beep\nbeep\nbeep"]
     answer: 1
   - type: challenge
-    id: square
-    world: worlds/practice-grid.yaml
-    robot: robots/trainer-bot.yaml
-    starter: starter.py
-    solution: solution.py        # never sent to students
-    realism: off
-    goals:
-      - {type: visit_zones, zones: [A, B, C, D], in_order: true}
-      - {type: end_in_zone, zone: start}
-      - {type: must_use, construct: for}
-    hints:
-      - Driving a square means doing the same two things four times.
-      - "Try: for side in range(4):"
+    ref: square-dance          # reuse a playground challenge
 ```
 
-### 7.2a Playground challenge files (milestone 1)
+**Pages.** The lesson player splits a lesson into pages. A page ends after
+each interactive block (example, visualize, quiz, challenge), so text always
+introduces the thing that follows it. On a challenge page, the page's text is
+shown in the challenge card, above the challenge's own instructions.
 
-Before the full lesson system, the playground reads one YAML file per
-challenge from `content/challenges/`. It has the same fields as a
-`challenge` block: `world`, optional `start`, `time_limit`, `realism`,
-`summary`, `instructions` (Markdown), `goals`, `hints`, `starter` and
-`solution`. CI runs every `solution` and fails if it doesn't pass its own
-goals, and also fails if the `starter` already passes them.
+**Progress.**
+- A quiz must be answered correctly before the student can continue. Wrong
+  answers show the choice's `why`.
+- A challenge with goals can be skipped, but the lesson only counts as
+  complete once it's solved.
+- A lesson is complete when the student reaches the end with every quiz and
+  goal challenge done.
+- Until accounts exist, progress and edited code live in the browser
+  (`localStorage`). Milestone 3 moves them to the server (`LessonProgress`,
+  `CodeDraft`, `Attempt`).
+
+**Validation** (`sim/src/trainer_content`, run by `pytest` and later by the
+backend):
+- Structure, ids and quiz answers.
+- Examples and visualize blocks must run (or fail, when `expect_error` is
+  set).
+- Output quizzes are checked against the real output.
+- Goal zones must exist in the world.
+- Challenge solutions must pass their goals, and starters must run without
+  already passing.
 
 ### 7.3 How teachers add lessons
 
@@ -365,9 +398,9 @@ goals, and also fails if the `starter` already passes them.
   lessons in the repo.
 - **Web editing (v1)**: Django admin, with a schema-validated YAML/JSON field
   and a "Preview" link that opens the lesson as a student sees it.
-- **Validation**: every challenge's `solution.py` is run through the simulator
-  in CI and when a lesson is saved in admin. A lesson whose solution fails its
-  own goals is rejected.
+- **Validation**: the `trainer_content` checker (§7.2) runs in CI and when a
+  lesson is saved in admin. A lesson with problems is rejected, with a list of
+  what's wrong.
 - **Team-specific lessons**: a course has an optional owner team. Blank means
   everyone can see it; otherwise only that team can. This lets a coach write
   lessons just for their team.
@@ -377,6 +410,17 @@ goals, and also fails if the `starter` already passes them.
 - **Later**: a dedicated authoring UI with a visual world editor.
 
 ### 7.4 Starting curriculum
+
+Units 1–4 are written (12 lessons, each ending in a challenge):
+
+| Unit | Lessons |
+|---|---|
+| 1. Meet the Robot | Hello, Python! (print, strings, comments, bugs) · First Moves (setup lines, `straight`, mm) · Turning (`turn`, sequences; "Around the Crate") |
+| 2. Variables | Variables Are Boxes (assignment, naming; "Score Keeper") · Variables Drive the Robot (`+=`; "There and Back Again") · Text and Numbers (types, f-strings; "Mission Report") |
+| 3. Math for Robots | Python Is a Calculator (`//`, `%`; "Match Timer") · Wheels and Circles (π, degrees ↔ mm; "Motor Math" with `run_angle`) · Speed × Time (`drive` + `wait`; "Timed Parking") |
+| 4. Loops | Repeat with for ("Square Dance") · Repeat with while ("Stop at the Line") · Lists and Loops (lists, indexes, `append`; "Spiral") |
+
+The plan for all units:
 
 1. **Meet the robot**: `print`, running code, the robot's first `straight()`
 2. **Variables**: assigning, naming, updating (`speed = speed + 50`)
@@ -509,7 +553,8 @@ generated from it.
 
 ```
 python-trainer/
-  sim/          Python simulator + simulated pybricks package (pytest, uv)
+  sim/          Python simulator + simulated pybricks package (pytest, uv);
+                trainer_content: lesson loader and checker (reused by the backend)
   backend/      Django project: accounts, teams, curriculum, progress
   frontend/     React + TS app: lesson player, editor, renderer, worker
   content/      Lessons, worlds and robot files (YAML + .py)
@@ -522,7 +567,7 @@ python-trainer/
 | Milestone | Scope |
 |---|---|
 | **M1: Simulator playground** ✅ | `sim/` package + tests; Web Worker with Pyodide; mat renderer; editor; trace playback; friendly errors. No accounts. This is the riskiest and most fun part, so it gets built and tested with a real kid first. |
-| **M2: Lessons** | Lesson schema, lesson player, visualizer, quizzes, goals, hints; first 4 units of the curriculum |
+| **M2: Lessons** ✅ | Lesson schema, lesson player, visualizer, quizzes, goals, hints; first 4 units of the curriculum |
 | **M3: Accounts & progress** | Django backend, teams and join codes, drafts, attempts, progress, admin lesson editing, content import and validation |
 | **M4: Deploy** | EC2 + Compose + Caddy + backups + CI |
 | **M5: Rest of the curriculum** | Sensors, line following, proportional control, mission runner |
@@ -538,3 +583,4 @@ python-trainer/
 | 2026-09-26 | One standard training robot ("Trainer Bot"). Custom robots and robot mods come later. The app is mainly about Python. |
 | 2026-09-26 | Original practice mats built from shapes. No copyrighted season artwork. |
 | 2026-09-26 | Pushing or collecting mission models comes after v1 |
+| 2026-09-27 | Lessons are YAML files with code inline, paged after each interactive block. Quizzes gate progress; challenges can be skipped. Progress stays in the browser until milestone 3. |

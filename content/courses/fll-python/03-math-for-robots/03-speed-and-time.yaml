@@ -1,0 +1,104 @@
+id: speed-and-time
+title: Speed × Time
+summary: Use speed and time to work out distance.
+concepts: [drive, wait, milliseconds, division]
+blocks:
+  - type: text
+    markdown: |
+      `drive_base.drive(speed, turn_rate)` starts driving and **keeps going**
+      until you stop it. `wait(ms)` pauses your program, but the robot keeps
+      driving while the program waits!
+
+      Time in Pybricks is in **milliseconds** (ms): 1000 ms is 1 second.
+
+  - type: challenge
+    id: try-drive
+    title: Drive for a While
+    summary: Drive at 100 mm per second for 3 seconds.
+    world: measuring-lane
+    starter: |
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+      from pybricks.tools import wait
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      drive_base.drive(100, 0)    # 100 mm every second, no turning
+      wait(3000)                  # for 3 seconds
+      drive_base.stop()
+      print("Distance:", drive_base.distance(), "mm")
+
+  - type: text
+    markdown: |
+      **distance = speed × time**. At 100 mm per second for 3 seconds, that's
+      300 mm. You probably saw a little less: the robot needs a moment to
+      speed up, just like a real one.
+
+      To find the **time** for a distance, flip it around:
+      **time = distance ÷ speed**.
+
+  - type: quiz
+    id: how-long
+    question: At 200 mm per second, how long does it take to drive 1000 mm?
+    choices:
+      - {text: "5 ms", why: "5 is right, but it's 5 seconds, not 5 milliseconds."}
+      - {text: "5000 ms"}
+      - {text: "200 ms", why: "200 is the speed, not the time."}
+      - {text: "1000 ms", why: "That would only get you 200 mm."}
+    answer: 1
+    explain: 1000 ÷ 200 = 5 seconds, and 5 seconds is 5000 milliseconds.
+
+  - type: challenge
+    id: timed-parking
+    title: Timed Parking
+    summary: Stop on the 1000 mm mark using speed and time.
+    world: measuring-lane
+    time_limit: 30
+    instructions: |
+      Park on the yellow **1000 mm** mark by driving at 200 mm per second and
+      waiting the right amount of time. Calculate the time **in your code**
+      from `distance` and `speed`. Remember that `wait` needs milliseconds!
+    goals:
+      - {type: end_in_zone, zone: mark-1000}
+      - {type: max_calls, name: straight, value: 0}
+      - {type: uses_variable_in, name: wait}
+    hints:
+      - "time in seconds = distance / speed"
+      - "Multiply by 1000 to turn seconds into milliseconds."
+    starter: |
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+      from pybricks.tools import wait
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      distance = 1000
+      speed = 200
+      time_ms = 1000    # <- calculate this!
+
+      drive_base.drive(speed, 0)
+      wait(time_ms)
+      drive_base.stop()
+    solution: |
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+      from pybricks.tools import wait
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      distance = 1000
+      speed = 200
+      time_ms = distance / speed * 1000
+
+      drive_base.drive(speed, 0)
+      wait(time_ms)
+      drive_base.stop()

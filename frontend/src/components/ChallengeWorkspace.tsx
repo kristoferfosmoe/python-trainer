@@ -1,0 +1,212 @@
+// Editor + mat + console for one challenge. Used by the playground and by
+// challenge pages in lessons.
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { runRequest, robot, startFor, worldFor } from "../content";
+import { lineAt } from "../playback";
+import { runner, useRunnerStatus } from "../sim/instance";
+import { RunTimeout } from "../sim/runner";
+import * as storage from "../storage";
+import type { Challenge, KidError, Trace } from "../types";
+import { usePlayback } from "../usePlayback";
+import { ChallengeCard } from "./ChallengeCard";
+import { CodeEditor } from "./CodeEditor";
+import { ErrorCard, Notice, Warnings } from "./Feedback";
+import { MatView } from "./MatView";
+import { ConsolePanel, RobotPanel, VariablesPanel } from "./Panels";
+import { PlaybackBar } from "./PlaybackBar";
+
+type Tab = "console" | "variables" | "robot";
+
+export const TIMEOUT_ERROR: KidError = {
+  type: "Timeout",
+  line: null,
+  python_message: "The program took too long to simulate.",
+  kid_message:
+    "Your program took too long for the simulator to finish. Is there a loop that never ends and never waits? Try adding `wait(10)` inside it.",
+};
+
+export function runFailure(error: unknown): KidError {
+  if (error instanceof RunTimeout) return TIMEOUT_ERROR;
+  return {
+    type: "SimulatorError",
+    line: null,
+    python_message: String(error),
+    kid_message: "The simulator had a problem running this program. Try again, or reload the page.",
+  };
+}
+
+interface Props {
+  challenge: Challenge;
+  /** Where the student's edits are saved in this browser. */
+  codeKey: string;
+  /** Lesson text shown above the challenge's own instructions. */
+  intro?: string;
+  onSolved?: () => void;
+  /** Shown in the "Challenge complete!" banner, e.g. a Continue button. */
+  solvedAction?: React.ReactNode;
+}
+
+export function ChallengeWorkspace({ challenge, codeKey, intro, onSolved, solvedAction }: Props) {
+  const status = useRunnerStatus();
+  const [code, setCode] = useState(() => storage.savedCode(codeKey) ?? challenge.starter);
+  const [trace, setTrace] = useState<Trace | null>(null);
+  const [tracedCode, setTracedCode] = useState("");
+  const [runError, setRunError] = useState<KidError | null>(null);
+  const [tab, setTab] = useState<Tab>("console");
+  const [copied, setCopied] = useState(false);
+  const [runCount, setRunCount] = useState(0);
+  const playback = usePlayback(trace);
+
+  const hasWorld = Boolean(challenge.world);
+  const world = worldFor(challenge);
+  const start = useMemo(() => startFor(challenge), [challenge]);
+  const { time, finished } = playback;
+
+  const changeCode = (next: string) => {
+    setCode(next);
+    storage.saveCode(codeKey, next);
+  };
+
+  const run = useCallback(async () => {
+    if (status === "running") return;
+    setRunError(null);
+    playback.pause();
+    try {
+      const result = await runner.run(runRequest(challenge, code));
+      setTrace(result);
+      setTracedCode(code);
+      if (hasWorld) playback.restart();
+      else playback.seek(result.end.t);
+    } catch (error) {
+      setTrace(null);
+      setRunError(runFailure(error));
+    }
+    setRunCount((n) => n + 1);
+  }, [status, challenge, code, hasWorld, playback]);
+
+  const goals = finished && trace && trace.goals.length > 0 ? trace.goals : null;
+  const allPassed = goals !== null && goals.every((g) => g.passed);
+
+  useEffect(() => {
+    if (allPassed) onSolved?.();
+    // Only when a run's result is revealed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allPassed, trace]);
+
+  const resetCode = () => {
+    if (code !== challenge.starter && !window.confirm("Start over with the starter code? Your changes will be lost.")) return;
+    changeCode(challenge.starter);
+  };
+
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      window.prompt("Copy your code:", code);
+    }
+  };
+
+  // Test hook: lets browser tests type into the editor quickly.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const hooks = {
+      setCode: changeCode,
+      solution: () => challenge.solution ?? "",
+      skipToEnd: playback.skipToEnd,
+    };
+    (window as unknown as { __trainer: object }).__trainer = hooks;
+    return () => {
+      const w = window as unknown as { __trainer?: object };
+      if (w.__trainer === hooks) delete w.__trainer;
+    };
+  });
+
+  const codeMatchesTrace = trace !== null && tracedCode === code;
+  const error = runError ?? (trace && trace.end.error && time >= trace.end.t ? trace.end.error : null);
+  const playLine = codeMatchesTrace && trace && !finished ? lineAt(trace, time) : null;
+  const errorLine = codeMatchesTrace && error ? error.line : null;
+  const warningLines = useMemo(
+    () => (codeMatchesTrace && trace ? trace.warnings.map((w) => w.line) : []),
+    [codeMatchesTrace, trace],
+  );
+
+  return (
+    <div className="workspace" data-runs={runCount}>
+      <div className="left">
+        <ChallengeCard challenge={challenge} world={world} goals={goals} intro={intro} />
+        {allPassed && (
+          <Notice>
+            <span>🎉 <b>Challenge complete!</b> Nice work.</span>
+            {solvedAction}
+          </Notice>
+        )}
+        <section className="card code-card" aria-label="Your code">
+          <div className="toolbar">
+            <button className="primary run" onClick={run} disabled={status === "running" || status === "broken"}>
+              {status === "loading" ? "⏳ Starting…" : status === "running" ? "⏳ Running…" : "▶ Run"}
+            </button>
+            <span className="shortcut">Ctrl + Enter</span>
+            <span className="spacer" />
+            {hasWorld && (
+              <button className="secondary" onClick={copyCode} title="Copy your code to paste into Pybricks for your real robot">
+                {copied ? "Copied!" : "📋 Copy for Pybricks"}
+              </button>
+            )}
+            <button className="secondary" onClick={resetCode}>↺ Start over</button>
+          </div>
+          {error && <ErrorCard error={error} />}
+          {codeMatchesTrace && trace && <Warnings warnings={trace.warnings} />}
+          <CodeEditor
+            value={code}
+            onChange={changeCode}
+            onRun={run}
+            playLine={playLine}
+            errorLine={errorLine}
+            warningLines={warningLines}
+          />
+        </section>
+      </div>
+
+      <div className="right">
+        {hasWorld && (
+          <section className="card mat-card" aria-label="Robot mat">
+            <MatView world={world} robot={robot} start={start} trace={trace} time={time} />
+            {trace && (
+              <PlaybackBar
+                time={time}
+                end={playback.end}
+                playing={playback.playing}
+                speed={playback.speed}
+                sound={playback.sound}
+                onPlayPause={playback.playing ? playback.pause : playback.play}
+                onSeek={(t) => {
+                  playback.pause();
+                  playback.seek(t);
+                }}
+                onSpeed={playback.setSpeed}
+                onSound={playback.setSound}
+              />
+            )}
+          </section>
+        )}
+        <section className={`card panels ${hasWorld ? "" : "tall"}`}>
+          <div className="tabs" role="tablist">
+            {(["console", "variables", ...(hasWorld ? ["robot"] : [])] as Tab[]).map((name) => (
+              <button key={name} role="tab" aria-selected={tab === name} className={tab === name ? "active" : ""} onClick={() => setTab(name)}>
+                {name === "console" ? "Console" : name === "variables" ? "Variables" : "Robot & ports"}
+              </button>
+            ))}
+          </div>
+          <div className="tab-body" role="tabpanel">
+            {tab === "console" && <ConsolePanel trace={trace} time={time} />}
+            {tab === "variables" && <VariablesPanel trace={trace} time={time} />}
+            {tab === "robot" && <RobotPanel robot={robot} trace={trace} time={time} />}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}

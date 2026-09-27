@@ -1,0 +1,54 @@
+id: for-loops
+title: Repeat with for
+summary: Use a for loop to repeat code a set number of times.
+concepts: [for, range, indentation]
+blocks:
+  - type: text
+    markdown: |
+      Robots do the same thing again and again. Instead of copying lines, use
+      a **loop**:
+
+      ```python
+      for side in range(4):
+          print("Hip hip hooray!")
+      ```
+
+      - `range(4)` means "4 times".
+      - The **indented** lines (moved right by 4 spaces) are **inside** the
+        loop. They repeat.
+      - `side` counts the rounds: 0, 1, 2, 3. Programmers start counting at 0!
+
+      Watch this loop run step by step. The number next to each line shows how
+      many times that line has run.
+
+  - type: visualize
+    id: count-rounds
+    code: |
+      for side in range(4):
+          print("Round", side)
+      print("Done!")
+
+  - type: quiz
+    id: beep-boop
+    check: output
+    question: What does this program print?
+    code: |
+      for i in range(3):
+          print("beep")
+      print("boop")
+    choices:
+      - "beep\nboop"
+      - "beep\nbeep\nbeep\nboop"
+      - "beep\nboop\nbeep\nboop\nbeep\nboop"
+    answer: 1
+    explain: |
+      Only the indented line is inside the loop, so `beep` prints 3 times.
+      `boop` isn't indented, so it runs once, after the loop.
+
+  - type: text
+    markdown: |
+      Now make the robot dance! A square is 4 sides, and each side is "drive,
+      then turn."
+
+  - type: challenge
+    ref: square-dance

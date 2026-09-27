@@ -1,0 +1,60 @@
+id: while-loops
+title: Repeat with while
+summary: Keep repeating while something is true, like driving until you see a line.
+concepts: [while, comparisons, color sensor]
+blocks:
+  - type: text
+    markdown: |
+      A `for` loop repeats a set number of times. A **while loop** repeats **as
+      long as** something is true:
+
+      ```python
+      while countdown > 0:
+      ```
+
+      reads like *"while countdown is more than 0, keep going."* Python checks
+      before every round.
+
+      | Compare | Means |
+      |---|---|
+      | `>` / `<` | more than / less than |
+      | `>=` / `<=` | more or equal / less or equal |
+      | `==` | equal to (two `=` signs!) |
+      | `!=` | not equal to |
+
+  - type: visualize
+    id: countdown
+    code: |
+      countdown = 3
+      while countdown > 0:
+          print(countdown)
+          countdown = countdown - 1
+      print("Launch!")
+
+  - type: quiz
+    id: forever
+    question: What happens if you delete the line `countdown = countdown - 1`?
+    choices:
+      - {text: "It prints 3, 2, 1 like before", why: "Without that line, nothing changes countdown."}
+      - {text: "It prints 3 forever. The loop never ends!"}
+      - {text: "Python shows an error", why: "The code is still correct Python. It just never stops."}
+    answer: 1
+    explain: |
+      `countdown` stays 3, so `countdown > 0` is always true. Something inside
+      a while loop has to change, or the loop never ends.
+
+  - type: text
+    markdown: |
+      ## Loops + sensors = smart robots
+
+      While loops are perfect for sensors. The color sensor's `reflection()`
+      gives a number: about 98 on white and 9 on black. So this loop keeps
+      waiting until the robot reaches a black line:
+
+      ```python
+      while line_sensor.reflection() > 50:
+          wait(10)
+      ```
+
+  - type: challenge
+    ref: stop-at-the-line

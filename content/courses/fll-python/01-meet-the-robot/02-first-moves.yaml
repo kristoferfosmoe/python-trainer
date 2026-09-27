@@ -1,0 +1,74 @@
+id: first-moves
+title: First Moves
+summary: Set up the robot in code and drive it forward and backward.
+concepts: [import, setup, straight, millimeters]
+blocks:
+  - type: text
+    markdown: |
+      Meet **Trainer Bot**! It's built like a typical FLL robot:
+
+      | Port | What's plugged in |
+      |---|---|
+      | A | Left wheel motor |
+      | B | Right wheel motor |
+      | C | Color sensor (looks down at the mat) |
+      | D | Distance sensor (looks forward) |
+      | E, F | Motors for attachments (arms) |
+
+      Every robot program starts with some **setup** lines that tell Python
+      which parts the robot has. Press **Run** and watch the mat.
+
+  - type: challenge
+    id: first-drive-demo
+    title: Your First Drive
+    summary: Run the program and watch the robot move.
+    world: practice-field
+    starter: |
+      # 1. Borrow the tools we need from the Pybricks library
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+
+      # 2. Tell Python about the motors and the wheels
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      # 3. Drive!
+      drive_base.straight(300)
+
+  - type: text
+    markdown: |
+      What do the setup lines do?
+
+      - `from ... import ...` borrows tools from **Pybricks**, the library that
+        controls LEGO hubs.
+      - `Motor(Port.A, ...)` says "there's a motor plugged into port A." The
+        left motor is mounted mirror-image, so it needs
+        `Direction.COUNTERCLOCKWISE`.
+      - `DriveBase(...)` joins the two wheel motors into one driving robot. It
+        needs the wheel size (56 mm) and the distance between the wheels
+        (112 mm) to do its math.
+
+      You'll copy these lines into almost every robot program. Then comes the
+      fun part: `drive_base.straight(300)` drives **300 millimeters** forward.
+      A **negative** number drives backward.
+
+  - type: quiz
+    id: backwards
+    question: Which line drives the robot **backward 20 centimeters**? (1 cm = 10 mm)
+    choices:
+      - {text: "`drive_base.straight(20)`", why: "That's forward, and only 20 mm."}
+      - {text: "`drive_base.straight(-200)`"}
+      - {text: "`drive_base.straight(200)`", why: "The right distance, but it drives forward."}
+      - {text: "`drive_base.straight(-20)`", why: "Backward, but only 20 mm (2 cm)."}
+    answer: 1
+    explain: 20 cm is 200 mm, and the minus sign means backward.
+
+  - type: text
+    markdown: |
+      Time for a real mission! Use the grid on the mat to measure: each small
+      square is **100 mm**.
+
+  - type: challenge
+    ref: first-drive

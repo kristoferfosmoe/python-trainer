@@ -1,0 +1,98 @@
+id: turning
+title: Turning
+summary: Turn left and right, and plan a path around an obstacle.
+concepts: [turn, angles, sequence]
+blocks:
+  - type: text
+    markdown: |
+      `drive_base.turn(90)` spins the robot in place by 90 degrees.
+
+      - A **positive** angle turns **right** (clockwise, like a clock's hands).
+      - A **negative** angle turns **left**.
+      - `90` is a quarter turn, `180` turns all the way around, and `360` is a
+        full spin.
+
+      Run this and watch which way it turns.
+
+  - type: challenge
+    id: try-turns
+    title: Try Turning
+    summary: See which way positive and negative angles turn.
+    world: practice-field
+    start: {x: 1100, y: 650, heading: 0}
+    starter: |
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      drive_base.turn(90)      # right
+      drive_base.straight(200)
+      drive_base.turn(-180)    # turn around, to the left
+      drive_base.straight(200)
+
+  - type: quiz
+    id: which-way
+    question: The robot faces **right** on the mat. It runs `drive_base.turn(-90)`. Which way does it face now?
+    choices:
+      - Up
+      - {text: Down, why: "That would be a right turn: `turn(90)`."}
+      - {text: Left, why: "That would need a half turn: `turn(180)`."}
+      - {text: Right, why: "It turned, so it isn't facing the same way."}
+    answer: 0
+    explain: A negative angle turns left. If you face right and turn left, you face up.
+
+  - type: text
+    markdown: |
+      ## Plan your path
+
+      Programs run one line after another, so a path is a **sequence** of
+      moves: drive, turn, drive, turn... Robot programmers often sketch the
+      path on paper first. Try it with this challenge!
+
+  - type: challenge
+    id: around-the-crate
+    title: Around the Crate
+    summary: Get to the red flag without touching the crate.
+    world: obstacle-course
+    time_limit: 60
+    instructions: |
+      A crate is in the way! Drive **around** it and finish on the **flag**.
+      Don't bump into the crate or the walls.
+    goals:
+      - {type: end_in_zone, zone: flag}
+      - {type: no_collisions}
+    hints:
+      - "Sketch it first: drive a little, turn left, go past the crate, turn right..."
+      - "The crate is 200 mm tall on the mat. Driving up 300 mm clears it."
+      - "One path: `straight(250)`, `turn(-90)`, `straight(300)`, `turn(90)`, `straight(700)`, `turn(90)`, `straight(300)`."
+    starter: |
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      drive_base.straight(250)
+      # Now find a way around the crate!
+    solution: |
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      drive_base.straight(250)
+      drive_base.turn(-90)
+      drive_base.straight(300)
+      drive_base.turn(90)
+      drive_base.straight(700)
+      drive_base.turn(90)
+      drive_base.straight(300)

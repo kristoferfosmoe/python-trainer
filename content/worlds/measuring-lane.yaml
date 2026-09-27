@@ -1,0 +1,58 @@
+# A long lane with ruler marks every 100 mm, counted from the start line.
+id: measuring-lane
+name: Measuring Lane
+size: [2362, 1143]
+background: white
+grid: 100
+start: {x: 200, y: 570, heading: 0}
+shapes:
+  # Start line
+  - {type: line, points: [[200, 440], [200, 700]], width: 6, color: green}
+  - {type: line, points: [[300, 650], [300, 680]], width: 4, color: gray}
+  - {type: line, points: [[300, 460], [300, 490]], width: 4, color: gray}
+  - {type: line, points: [[400, 650], [400, 680]], width: 4, color: gray}
+  - {type: line, points: [[400, 460], [400, 490]], width: 4, color: gray}
+  - {type: line, points: [[500, 650], [500, 680]], width: 4, color: gray}
+  - {type: line, points: [[500, 460], [500, 490]], width: 4, color: gray}
+  - {type: line, points: [[600, 650], [600, 680]], width: 4, color: gray}
+  - {type: line, points: [[600, 460], [600, 490]], width: 4, color: gray}
+  - {type: line, points: [[700, 650], [700, 700]], width: 6, color: black}
+  - {type: line, points: [[700, 440], [700, 490]], width: 6, color: black}
+  - {type: line, points: [[800, 650], [800, 680]], width: 4, color: gray}
+  - {type: line, points: [[800, 460], [800, 490]], width: 4, color: gray}
+  - {type: line, points: [[900, 650], [900, 680]], width: 4, color: gray}
+  - {type: line, points: [[900, 460], [900, 490]], width: 4, color: gray}
+  - {type: line, points: [[1000, 650], [1000, 680]], width: 4, color: gray}
+  - {type: line, points: [[1000, 460], [1000, 490]], width: 4, color: gray}
+  - {type: line, points: [[1100, 650], [1100, 680]], width: 4, color: gray}
+  - {type: line, points: [[1100, 460], [1100, 490]], width: 4, color: gray}
+  - {type: line, points: [[1200, 650], [1200, 700]], width: 6, color: black}
+  - {type: line, points: [[1200, 440], [1200, 490]], width: 6, color: black}
+  - {type: line, points: [[1300, 650], [1300, 680]], width: 4, color: gray}
+  - {type: line, points: [[1300, 460], [1300, 490]], width: 4, color: gray}
+  - {type: line, points: [[1400, 650], [1400, 680]], width: 4, color: gray}
+  - {type: line, points: [[1400, 460], [1400, 490]], width: 4, color: gray}
+  - {type: line, points: [[1500, 650], [1500, 680]], width: 4, color: gray}
+  - {type: line, points: [[1500, 460], [1500, 490]], width: 4, color: gray}
+  - {type: line, points: [[1600, 650], [1600, 680]], width: 4, color: gray}
+  - {type: line, points: [[1600, 460], [1600, 490]], width: 4, color: gray}
+  - {type: line, points: [[1700, 650], [1700, 700]], width: 6, color: black}
+  - {type: line, points: [[1700, 440], [1700, 490]], width: 6, color: black}
+  - {type: line, points: [[1800, 650], [1800, 680]], width: 4, color: gray}
+  - {type: line, points: [[1800, 460], [1800, 490]], width: 4, color: gray}
+  - {type: line, points: [[1900, 650], [1900, 680]], width: 4, color: gray}
+  - {type: line, points: [[1900, 460], [1900, 490]], width: 4, color: gray}
+  - {type: line, points: [[2000, 650], [2000, 680]], width: 4, color: gray}
+  - {type: line, points: [[2000, 460], [2000, 490]], width: 4, color: gray}
+  - {type: line, points: [[2100, 650], [2100, 680]], width: 4, color: gray}
+  - {type: line, points: [[2100, 460], [2100, 490]], width: 4, color: gray}
+  - {type: line, points: [[2200, 650], [2200, 700]], width: 6, color: black}
+  - {type: line, points: [[2200, 440], [2200, 490]], width: 6, color: black}
+  - {type: line, points: [[2300, 650], [2300, 680]], width: 4, color: gray}
+  - {type: line, points: [[2300, 460], [2300, 490]], width: 4, color: gray}
+  # Targets
+  - {type: rect, x: 680, y: 500, w: 40, h: 140, color: yellow}
+  - {type: rect, x: 1150, y: 500, w: 100, h: 140, color: yellow}
+zones:
+  - {id: mark-500, label: 500 mm, type: rect, x: 680, y: 500, w: 40, h: 140}
+  - {id: mark-1000, label: 1000 mm, type: rect, x: 1150, y: 500, w: 100, h: 140}

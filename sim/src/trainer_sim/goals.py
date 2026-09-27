@@ -8,14 +8,35 @@ import ast
 
 from .shapes import ShapeError
 
+def _node(node_type):
+    return lambda n: isinstance(n, node_type)
+
+
+def _operator(op_type):
+    return lambda n: isinstance(n, (ast.BinOp, ast.AugAssign)) and isinstance(n.op, op_type)
+
+
+# must_use constructs: (test for an AST node, how to describe it)
 CONSTRUCTS = {
-    "for": (ast.For, "a `for` loop"),
-    "while": (ast.While, "a `while` loop"),
-    "if": (ast.If, "an `if` statement"),
-    "def": (ast.FunctionDef, "a function (`def`)"),
-    "list": (ast.List, "a list"),
-    "variable": (ast.Assign, "a variable"),
+    "for": (_node(ast.For), "a `for` loop"),
+    "while": (_node(ast.While), "a `while` loop"),
+    "if": (_node(ast.If), "an `if` statement"),
+    "def": (_node(ast.FunctionDef), "a function (`def`)"),
+    "list": (_node(ast.List), "a list"),
+    "variable": (_node(ast.Assign), "a variable"),
+    "fstring": (_node(ast.JoinedStr), "an f-string, like `f\"{points} points\"`"),
+    "floor_divide": (_operator(ast.FloorDiv), "whole-number division `//`"),
+    "modulo": (_operator(ast.Mod), "the remainder operator `%`"),
 }
+
+
+def _calls(tree, name):
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Call) and (
+            (isinstance(n.func, ast.Attribute) and n.func.attr == name)
+            or (isinstance(n.func, ast.Name) and n.func.id == name)
+        ):
+            yield n
 
 
 class Goal:
@@ -91,31 +112,44 @@ def check_goal(spec, index, world, recording, end, code, sim):
         construct = spec["construct"]
         if construct not in CONSTRUCTS:
             raise ShapeError(f"must_use: unknown construct '{construct}'")
-        node_type, name = CONSTRUCTS[construct]
+        test, name = CONSTRUCTS[construct]
         label = label or f"Use {name}"
         try:
             tree = ast.parse(code)
-            passed = any(isinstance(n, node_type) for n in ast.walk(tree))
+            passed = any(test(n) for n in ast.walk(tree))
         except SyntaxError:
             passed = False
         detail = "" if passed else f"Your code needs {name}."
 
     elif kind == "max_calls":
         name, limit = spec["name"], int(spec["value"])
-        label = label or f"Use `{name}()` at most {limit} time{'s' if limit != 1 else ''} in your code"
+        if limit == 0:
+            label = label or f"Don't use `{name}()`"
+        else:
+            label = label or f"Use `{name}()` at most {limit} time{'s' if limit != 1 else ''} in your code"
         try:
-            tree = ast.parse(code)
-            count = sum(
-                1 for n in ast.walk(tree)
-                if isinstance(n, ast.Call) and (
-                    (isinstance(n.func, ast.Attribute) and n.func.attr == name)
-                    or (isinstance(n.func, ast.Name) and n.func.id == name)
-                )
-            )
+            count = len(list(_calls(ast.parse(code), name)))
         except SyntaxError:
             count = limit + 1
         passed = count <= limit
-        detail = "" if passed else f"`{name}()` appears {count} times. Can a loop help?"
+        if passed:
+            detail = ""
+        elif limit == 0:
+            detail = f"Your code uses `{name}()`. Find another way!"
+        else:
+            detail = f"`{name}()` appears {count} times. Can a loop help?"
+
+    elif kind == "uses_variable_in":
+        name = spec["name"]
+        label = label or f"Give `{name}()` a variable instead of a plain number"
+        try:
+            calls = list(_calls(ast.parse(code), name))
+        except SyntaxError:
+            calls = []
+        passed = bool(calls) and all(
+            c.args and any(isinstance(n, ast.Name) for n in ast.walk(c.args[0])) for c in calls
+        )
+        detail = "" if passed else f"Put a variable inside the brackets, like `{name}(distance)`."
 
     elif kind == "printed":
         text = str(spec["text"])

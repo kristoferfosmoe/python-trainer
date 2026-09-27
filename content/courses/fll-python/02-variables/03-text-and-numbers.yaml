@@ -1,0 +1,75 @@
+id: text-and-numbers
+title: Text and Numbers
+summary: Mix words and numbers in messages with f-strings.
+concepts: [strings, numbers, types, f-strings]
+blocks:
+  - type: text
+    markdown: |
+      Variables can hold **text** too:
+
+      ```python
+      team = "Brick Builders"
+      ```
+
+      Numbers and text are different **types**. `20` is a number you can do
+      math with. `"20"`, with quotes, is text. Python won't let you `+` a
+      number onto text. Run this to see what happens:
+
+  - type: example
+    id: mixing-types
+    expect_error: true
+    code: |
+      points = 20
+      print("We scored " + points)
+
+  - type: text
+    markdown: |
+      One fix is to use commas: `print("We scored", points)`. `print` puts a
+      space between each thing.
+
+      An even better way is an **f-string**. Put an `f` before the quotes, and
+      put variables inside curly brackets `{ }`. Python fills them in:
+
+  - type: example
+    id: fstrings
+    code: |
+      team = "Brick Builders"
+      points = 20
+      print("We scored", points)
+      print(f"{team} scored {points} points!")
+
+  - type: quiz
+    id: fstring-output
+    check: output
+    question: What does this program print?
+    code: |
+      mission = "Crane"
+      print(f"Next: {mission}")
+    choices:
+      - "Next: {mission}"
+      - "Next: Crane"
+      - "Next: mission"
+    answer: 1
+    explain: The `f` tells Python to replace `{mission}` with what's in the variable.
+
+  - type: challenge
+    id: mission-report
+    title: Mission Report
+    summary: Print a report using an f-string.
+    instructions: |
+      Use an **f-string** with the two variables to print exactly:
+
+      `Mission Crane scored 20 points`
+    goals:
+      - {type: printed, text: "Mission Crane scored 20 points"}
+      - {type: must_use, construct: fstring}
+    hints:
+      - 'Start with `print(f"Mission {mission} ...")`.'
+    starter: |
+      mission = "Crane"
+      points = 20
+      print("Mission", mission)
+    solution: |
+      mission = "Crane"
+      points = 20
+      print(f"Mission {mission} scored {points} points")

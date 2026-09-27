@@ -76,9 +76,11 @@ interface Props {
   errorLine: number | null;
   warningLines: number[];
   editorRef?: React.RefObject<EditorView | null>;
+  /** Grow with the code instead of filling a tall box (for lesson examples). */
+  compact?: boolean;
 }
 
-export function CodeEditor({ value, onChange, onRun, playLine, errorLine, warningLines, editorRef }: Props) {
+export function CodeEditor({ value, onChange, onRun, playLine, errorLine, warningLines, editorRef, compact }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   const callbacks = useRef({ onChange, onRun });
@@ -132,5 +134,5 @@ export function CodeEditor({ value, onChange, onRun, playLine, errorLine, warnin
     if (line && line <= editor.state.doc.lines) scrollLineIntoEditor(editor, line);
   }, [playLine, errorLine, warningLines]);
 
-  return <div className="editor" ref={host} />;
+  return <div className={compact ? "editor compact" : "editor"} ref={host} />;
 }

@@ -333,7 +333,7 @@ class Recorder:
     def event(self, kind, data):
         if len(self.events) >= self.MAX_EVENTS:
             return
-        entry = {"t": round(self.sim.now, 1), "type": kind, "line": self.sim.current_line}
+        entry = {"t": round(self.sim.now, 2), "type": kind, "line": self.sim.current_line}
         entry.update(data)
         self.events.append(entry)
 
@@ -355,7 +355,7 @@ class Recorder:
         if len(self.prints) >= self.MAX_PRINTS:
             self.prints_truncated = True
             return
-        self.prints.append({"t": round(self.sim.now, 1), "line": self._partial_line, "text": text[:500]})
+        self.prints.append({"t": round(self.sim.now, 2), "line": self._partial_line, "text": text[:500]})
 
     def to_dict(self):
         return {

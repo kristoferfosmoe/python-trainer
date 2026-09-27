@@ -1,0 +1,107 @@
+id: variables-are-boxes
+title: Variables Are Boxes
+summary: Store a value with a name, and change it later.
+concepts: [variables, assignment, naming]
+blocks:
+  - type: text
+    markdown: |
+      A **variable** is like a box with a name on it. You put a value inside,
+      and later you can look inside or swap in a new value.
+
+      ```python
+      speed = 200
+      ```
+
+      This means *make a box called `speed` and put `200` in it.* Here the `=`
+      sign doesn't mean "equals" like in math class. It means **store**.
+
+      Press **Play** to watch this program one step at a time. Keep an eye on
+      the **Variables** list.
+
+  - type: visualize
+    id: apples
+    code: |
+      apples = 3
+      print(apples)
+      apples = 5
+      print(apples)
+      apples = apples + 2
+      print(apples)
+
+  - type: text
+    markdown: |
+      Did you catch the last one? `apples = apples + 2` means *look in the box
+      (5), add 2, and put the answer (7) back in the box.* Programmers do this
+      all the time, like adding up points during a match.
+
+  - type: quiz
+    id: predict-x
+    check: output
+    question: What does this program print?
+    code: |
+      x = 10
+      x = x - 3
+      print(x)
+    choices: ["10", "7", "x - 3", "13"]
+    answer: 1
+    explain: "`x` starts as 10. Then `x - 3` is 7, and 7 goes back into `x`."
+
+  - type: text
+    markdown: |
+      ## Naming rules
+
+      Variable names can use letters, numbers and `_`, but:
+
+      - no spaces (use `_` instead, like `drive_distance`)
+      - they can't start with a number
+      - capital letters matter: `Speed` and `speed` are different boxes!
+
+      Good names say what's inside: `garage_distance` is better than `d`.
+
+  - type: quiz
+    id: good-name
+    question: Which one is a good variable name?
+    choices:
+      - {text: "`drive distance`", why: "Names can't have spaces."}
+      - {text: "`2nd_turn`", why: "Names can't start with a number."}
+      - {text: "`drive_distance`"}
+      - {text: "`drive-distance`", why: "`-` means minus in Python, so it can't be part of a name."}
+    answer: 2
+    explain: "`drive_distance` uses only letters and `_`, and it says what's inside."
+
+  - type: text
+    markdown: |
+      This program has a bug about capital letters. Run it, read what Python
+      says, and fix it.
+
+  - type: example
+    id: capital-letters
+    expect_error: true
+    code: |
+      Speed = 100
+      print(speed)
+
+  - type: challenge
+    id: score-keeper
+    title: Score Keeper
+    summary: Add up the points from three missions.
+    instructions: |
+      Your robot scores **20** points, then **15** points, then **30** points.
+      Starting from `score = 0`, add each mission's points to `score`. Then
+      print the total.
+    goals:
+      - {type: printed, text: "65"}
+    hints:
+      - "Under `score = 0`, write `score = score + 20`."
+      - "Do the same for 15 and 30, then `print(score)` at the end."
+    starter: |
+      score = 0
+      # Add the points from each mission here
+
+      print(score)
+    solution: |
+      score = 0
+      score = score + 20
+      score = score + 15
+      score = score + 30
+      print(score)

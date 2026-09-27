@@ -1,0 +1,83 @@
+id: python-calculator
+title: Python Is a Calculator
+summary: Add, subtract, multiply, divide, and find remainders.
+concepts: [arithmetic, "//", "%", order of operations]
+blocks:
+  - type: text
+    markdown: |
+      Python is great at math:
+
+      | Symbol | Meaning | Example | Answer |
+      |---|---|---|---|
+      | `+` | add | `7 + 2` | `9` |
+      | `-` | subtract | `7 - 2` | `5` |
+      | `*` | multiply | `7 * 2` | `14` |
+      | `/` | divide | `7 / 2` | `3.5` |
+      | `//` | divide, keep the whole number | `7 // 2` | `3` |
+      | `%` | remainder | `7 % 2` | `1` |
+
+      Just like in math class, `*` and `/` happen before `+` and `-`. Use
+      brackets to change the order.
+
+  - type: example
+    id: operators
+    code: |
+      print(7 + 2)
+      print(7 / 2)
+      print(7 // 2)
+      print(7 % 2)
+      print(2 + 3 * 4)
+      print((2 + 3) * 4)
+
+  - type: quiz
+    id: order
+    check: output
+    question: What does this print?
+    code: |
+      print(10 - 2 * 3)
+    choices: ["24", "4", "12"]
+    answer: 1
+    explain: "`2 * 3` happens first (6), then `10 - 6` is 4."
+
+  - type: text
+    markdown: |
+      `//` and `%` make a great team for splitting things up. How many minutes
+      and seconds is 150 seconds? `150 // 60` is 2 whole minutes, and
+      `150 % 60` is the 30 seconds left over.
+
+  - type: visualize
+    id: minutes-and-seconds
+    code: |
+      match_seconds = 150
+      minutes = match_seconds // 60
+      seconds = match_seconds % 60
+      print(minutes, "minutes")
+      print(seconds, "seconds")
+
+  - type: challenge
+    id: match-timer
+    title: Match Timer
+    summary: Turn seconds into minutes and seconds.
+    instructions: |
+      An FLL robot game match lasts `match_seconds` seconds. Calculate the
+      minutes and seconds with `//` and `%`, so your code would still work if
+      the match length changed. Your program should print:
+
+      `2 minutes 30 seconds`
+    goals:
+      - {type: printed, text: "2 minutes 30 seconds"}
+      - {type: must_use, construct: floor_divide}
+      - {type: must_use, construct: modulo}
+    hints:
+      - "There are 60 seconds in a minute."
+      - "`minutes = match_seconds // 60`"
+    starter: |
+      match_seconds = 150
+      minutes = 0
+      seconds = 0
+      print(f"{minutes} minutes {seconds} seconds")
+    solution: |
+      match_seconds = 150
+      minutes = match_seconds // 60
+      seconds = match_seconds % 60
+      print(f"{minutes} minutes {seconds} seconds")

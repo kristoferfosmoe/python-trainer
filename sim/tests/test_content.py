@@ -67,3 +67,29 @@ def test_goal_zones_exist():
 def test_unknown_goal_type_is_rejected(robot):
     with pytest.raises(ValueError):
         check_goals([{"type": "fly"}], World({}), {"frames": {"x": [], "y": []}}, {"reason": "finished"}, "", None)
+
+
+GOAL_CASES = [
+    ("x = f'{1}'", {"type": "must_use", "construct": "fstring"}, True),
+    ("x = '1'", {"type": "must_use", "construct": "fstring"}, False),
+    ("x = 7 // 2", {"type": "must_use", "construct": "floor_divide"}, True),
+    ("x = 7\nx %= 2", {"type": "must_use", "construct": "modulo"}, True),
+    ("x = 7 / 2", {"type": "must_use", "construct": "floor_divide"}, False),
+    ("d = 5\nprint(d)", {"type": "uses_variable_in", "name": "print"}, True),
+    ("d = 5\nprint(d * 2)", {"type": "uses_variable_in", "name": "print"}, True),
+    ("print(5)", {"type": "uses_variable_in", "name": "print"}, False),
+    ("x = 1", {"type": "uses_variable_in", "name": "print"}, False),
+    ("x = 1", {"type": "max_calls", "name": "print", "value": 0}, True),
+    ("print(1)", {"type": "max_calls", "name": "print", "value": 0}, False),
+]
+
+
+@pytest.mark.parametrize("code, goal, passed", GOAL_CASES)
+def test_code_goals(robot, code, goal, passed):
+    result = run_program(code, {}, robot, {}, [goal])
+    assert result["goals"][1]["passed"] is passed, result["goals"][1]
+
+
+def test_max_calls_zero_label(robot):
+    result = run_program("x = 1", {}, robot, {}, [{"type": "max_calls", "name": "straight", "value": 0}])
+    assert result["goals"][1]["label"] == "Don't use `straight()`"

@@ -1,0 +1,90 @@
+id: hello-python
+title: Hello, Python!
+summary: Write your first program and make the computer talk.
+concepts: [print, text, comments, bugs]
+blocks:
+  - type: text
+    markdown: |
+      A **program** is a list of instructions for a computer. Your FLL robot
+      runs programs too! In this course you'll write them in **Python**, a
+      programming language used by beginners *and* by scientists at NASA.
+
+      Let's start with the most famous first program. `print()` shows a
+      message. Press **Run** to try it.
+
+  - type: example
+    id: first-print
+    code: |
+      print("Hello, robot!")
+      print("I am learning Python.")
+
+  - type: text
+    markdown: |
+      The computer runs your program **from top to bottom**, one line at a
+      time. Change the words inside the quotes and run it again. Can you add a
+      third line?
+
+      Text inside quotes is called a **string**. Without quotes, Python treats
+      what you type as code instead of text.
+
+  - type: quiz
+    id: quotes
+    check: output
+    question: What does this program print?
+    code: |
+      print("3 + 4")
+      print(3 + 4)
+    choices:
+      - "7\n7"
+      - "3 + 4\n7"
+      - "3 + 4\n3 + 4"
+    answer: 1
+    explain: |
+      With quotes, `"3 + 4"` is just text, so Python prints it exactly as it
+      is. Without quotes, Python does the math and prints `7`.
+
+  - type: text
+    markdown: |
+      ## Comments
+
+      A line that starts with `#` is a **comment**. Python skips it. Comments
+      are notes for people, like your teammates.
+
+  - type: example
+    id: comments
+    code: |
+      # This is a comment. Python ignores it.
+      print("Comments don't show up when you run the program")
+      # print("This line won't run, because it's a comment")
+
+  - type: text
+    markdown: |
+      ## Bugs are normal
+
+      Every programmer makes mistakes, called **bugs**. When Python finds one,
+      it stops and shows an error message. This program has a bug. Run it, read
+      the message, then **fix it** and run it again!
+
+  - type: example
+    id: fix-the-bug
+    expect_error: true
+    code: |
+      print("Ready to go!")
+      print("Hello, robot!)
+
+  - type: challenge
+    id: robot-greeting
+    title: Robot Greeting
+    summary: Print a message for the start of the match.
+    instructions: |
+      Make your program print exactly: `Ready for the robot game!`
+
+      Capital letters, spaces and the `!` all have to match.
+    goals:
+      - {type: printed, text: "Ready for the robot game!"}
+    hints:
+      - 'Use `print("...")` with the message inside the quotes.'
+    starter: |
+      # Print the message on the line below
+    solution: |
+      print("Ready for the robot game!")

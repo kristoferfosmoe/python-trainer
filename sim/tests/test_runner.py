@@ -160,3 +160,33 @@ def test_long_line_follow_is_fast_enough(run):
     """)
     assert result["stats"]["wall_ms"] < 3000
     assert result["end"]["reason"] == "finished"
+
+
+def test_structure_describes_loops_and_ifs(run):
+    result = run("""
+        for side in range(4):
+            if side == 2:
+                print("two")
+            elif side == 3:
+                print("three")
+            else:
+                print("other")
+        while False:
+            pass
+    """, setup=False)
+    assert result["structure"] == [
+        {"line": 1, "body": [2, 7], "kind": "for", "target": "side"},
+        {"line": 2, "body": [3, 3], "kind": "if"},
+        {"line": 4, "body": [5, 5], "kind": "elif"},
+        {"line": 8, "body": [9, 9], "kind": "while"},
+    ]
+
+
+def test_print_times_line_up_with_steps(run):
+    """A print's time equals the time of the next step, so the visualizer can match them."""
+    result = run("""
+        print("a")
+        x = 1
+    """, setup=False)
+    step_times = [t for t, _ in result["steps"]]
+    assert result["prints"][0]["t"] == step_times[1]

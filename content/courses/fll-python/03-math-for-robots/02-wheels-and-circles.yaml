@@ -1,0 +1,99 @@
+id: wheels-and-circles
+title: Wheels and Circles
+summary: Work out how far one turn of the wheel takes the robot.
+concepts: [math module, pi, circumference, degrees]
+blocks:
+  - type: text
+    markdown: |
+      When a wheel turns around once, the robot moves forward by the distance
+      around the wheel. That's its **circumference**:
+
+      **circumference = π × diameter**
+
+      π ("pi") is about 3.14. Python knows it much more exactly as `math.pi`,
+      after you `import math`.
+
+  - type: example
+    id: circumference
+    code: |
+      import math
+
+      wheel_diameter = 56
+      circumference = math.pi * wheel_diameter
+      print("One wheel turn =", round(circumference, 1), "mm")
+
+  - type: text
+    markdown: |
+      Motors measure how far they turn in **degrees**: 360 degrees is one
+      full turn. So to drive a distance, the wheels must turn:
+
+      **degrees = distance ÷ circumference × 360**
+
+      That's exactly the math `DriveBase` does for you inside `straight()`!
+
+  - type: quiz
+    id: two-turns
+    question: The wheels turn around **2 full times**. About how far does the robot go? (One turn is about 176 mm.)
+    choices:
+      - {text: "176 mm", why: "That's just one turn."}
+      - {text: "352 mm"}
+      - {text: "720 mm", why: "That's 2 turns in degrees (2 × 360), not millimeters."}
+      - {text: "56 mm", why: "That's the wheel's diameter."}
+    answer: 1
+    explain: 2 × 176 mm = 352 mm.
+
+  - type: text
+    markdown: |
+      You can also turn each wheel yourself with
+      `motor.run_angle(speed, degrees)`. To drive straight, both wheels must
+      turn together. `wait=False` starts the left wheel **without waiting**
+      for it to finish, so the right wheel starts at the same moment.
+
+  - type: challenge
+    id: motor-math
+    title: Motor Math
+    summary: Drive exactly 500 mm using only the wheel motors.
+    world: measuring-lane
+    time_limit: 30
+    instructions: |
+      Stop on the yellow **500 mm** mark, but this time **without**
+      `straight()`. Calculate how many degrees the wheels must turn, then use
+      `run_angle` on both motors. The mark is narrow, so your math must be
+      right!
+    goals:
+      - {type: end_in_zone, zone: mark-500}
+      - {type: max_calls, name: straight, value: 0}
+    hints:
+      - "degrees = distance ÷ circumference × 360"
+      - "In Python: `degrees = distance / circumference * 360`"
+      - "You should get about 1023 degrees."
+    starter: |
+      import math
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+
+      distance = 500
+      circumference = math.pi * 56
+      degrees = 360    # <- calculate this!
+      print("Turning the wheels", degrees, "degrees")
+
+      left_motor.run_angle(400, degrees, wait=False)
+      right_motor.run_angle(400, degrees)
+    solution: |
+      import math
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+
+      distance = 500
+      circumference = math.pi * 56
+      degrees = round(distance / circumference * 360)
+      print("Turning the wheels", degrees, "degrees")
+
+      left_motor.run_angle(400, degrees, wait=False)
+      right_motor.run_angle(400, degrees)

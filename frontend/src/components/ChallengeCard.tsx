@@ -1,23 +1,20 @@
-import DOMPurify from "dompurify";
-import { marked } from "marked";
 import { useMemo, useState } from "react";
+import { markdown } from "../markdown";
 import type { Challenge, GoalResult, WorldSpec } from "../types";
 import { withCode } from "./Feedback";
-
-function markdown(text: string) {
-  return { __html: DOMPurify.sanitize(marked.parse(text, { async: false })) };
-}
 
 interface Props {
   challenge: Challenge;
   world: WorldSpec;
   goals: GoalResult[] | null; // null until a run has finished playing
+  intro?: string; // lesson text shown before the challenge's instructions
 }
 
-export function ChallengeCard({ challenge, world, goals }: Props) {
+export function ChallengeCard({ challenge, world, goals, intro }: Props) {
   const [open, setOpen] = useState(true);
   const [hintsShown, setHintsShown] = useState(0);
-  const instructions = useMemo(() => markdown(challenge.instructions), [challenge.instructions]);
+  const text = [intro, challenge.instructions].filter(Boolean).join("\n\n");
+  const instructions = useMemo(() => markdown(text), [text]);
   const realism = challenge.realism === true || challenge.realism === "on";
   const goalRows = goals ?? previewGoals(challenge, world);
   const hints = challenge.hints ?? [];
@@ -27,18 +24,20 @@ export function ChallengeCard({ challenge, world, goals }: Props) {
       <div className="challenge-head">
         <div>
           <h2 id="challenge-title">{challenge.title}</h2>
-          <p className="summary">{challenge.summary}</p>
+          {challenge.summary && <p className="summary">{challenge.summary}</p>}
         </div>
-        <button className="link" onClick={() => setOpen(!open)} aria-expanded={open}>
-          {open ? "Hide" : "Show"} instructions
-        </button>
+        {text && (
+          <button className="link" onClick={() => setOpen(!open)} aria-expanded={open}>
+            {open ? "Hide" : "Show"} instructions
+          </button>
+        )}
       </div>
       {realism && (
         <p className="realism" title="Wheels slip and one wheel is slightly smaller, just like a real robot.">
           🌪️ Real-world wobble is <b>on</b> for this challenge.
         </p>
       )}
-      {open && <div className="instructions" dangerouslySetInnerHTML={instructions} />}
+      {open && text && <div className="instructions markdown" dangerouslySetInnerHTML={instructions} />}
       {goalRows.length > 0 && (
         <ul className="goals" aria-label="Goals">
           {goalRows.map((goal) => (

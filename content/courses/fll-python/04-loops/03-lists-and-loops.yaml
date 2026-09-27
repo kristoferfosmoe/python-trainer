@@ -1,0 +1,104 @@
+id: lists-and-loops
+title: Lists and Loops
+summary: Store many values in a list and loop over them.
+concepts: [lists, indexes, len, append, "for ... in"]
+blocks:
+  - type: text
+    markdown: |
+      A **list** holds many values in order, inside square brackets:
+
+      ```python
+      distances = [300, 200, 100]
+      ```
+
+      Each item has a position number called an **index**. Indexes start at
+      **0**: `distances[0]` is `300` and `distances[1]` is `200`.
+      `len(distances)` tells you how many items there are.
+
+      Best of all, a `for` loop can visit every item in a list, one at a time:
+
+  - type: visualize
+    id: list-loop
+    code: |
+      distances = [300, 200, 100]
+      print("First:", distances[0])
+      print("How many:", len(distances))
+      for d in distances:
+          print("Drive", d, "mm")
+
+  - type: quiz
+    id: index-one
+    check: output
+    question: What does this program print?
+    code: |
+      moves = [90, -90, 180]
+      print(moves[1])
+    choices: ["90", "-90", "180", "[90, -90, 180]"]
+    answer: 1
+    explain: Indexes start at 0, so `moves[1]` is the **second** item.
+
+  - type: text
+    markdown: |
+      You can change a list, too. `append` adds an item to the end:
+
+  - type: example
+    id: append
+    code: |
+      path = [500, 400]
+      path.append(300)
+      print(path)
+      print(len(path), "moves")
+
+  - type: text
+    markdown: |
+      Lists make robot paths easy to change. The moves are just data, and one
+      loop drives them all.
+
+  - type: challenge
+    id: spiral
+    title: Spiral
+    summary: Drive a spiral through five dots with one list and one loop.
+    world: spiral
+    time_limit: 90
+    instructions: |
+      Drive the spiral through dots **1** to **5**, turning right
+      (`turn(90)`) after each side. Each side is shorter than the one before.
+
+      Put all the side lengths in a **list**, and use a `for` loop so
+      `straight()` appears only **once** in your code. Measure the sides using
+      the grid (each square is 100 mm). The first two are done for you!
+    goals:
+      - {type: visit_zones, zones: [dot-1, dot-2, dot-3, dot-4, dot-5], in_order: true}
+      - {type: must_use, construct: for}
+      - {type: must_use, construct: list}
+      - {type: max_calls, name: straight, value: 1}
+    hints:
+      - The third side goes from dot 2 to dot 3. Count the grid squares between them.
+      - "Each pair of sides gets 200 mm shorter: 1500, 700, then 1300..."
+      - "`sides = [1500, 700, 1300, 500, 1100]`"
+    starter: |
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      sides = [1500, 700]
+      for side in sides:
+          drive_base.straight(side)
+          drive_base.turn(90)
+    solution: |
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      sides = [1500, 700, 1300, 500, 1100]
+      for side in sides:
+          drive_base.straight(side)
+          drive_base.turn(90)

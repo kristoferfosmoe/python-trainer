@@ -1,0 +1,83 @@
+id: variables-drive-the-robot
+title: Variables Drive the Robot
+summary: Use variables for distances so your code is easy to change.
+concepts: [variables, "+=", "-="]
+blocks:
+  - type: text
+    markdown: |
+      Variables are super useful in robot programs. Instead of typing the same
+      number in lots of places, give it a name:
+
+      ```python
+      garage = 930
+      drive_base.straight(garage)     # there
+      drive_base.straight(-garage)    # and back
+      ```
+
+      If the garage moves, you only change **one** line. That's how FLL teams
+      tune their robots fast at a tournament!
+
+      There's also a shortcut for changing a variable: `distance += 50` means
+      `distance = distance + 50`, and `-=` subtracts.
+
+  - type: visualize
+    id: plus-equals-demo
+    code: |
+      distance = 200
+      distance += 50
+      print(distance)
+      distance += 50
+      print(distance)
+      distance -= 100
+      print(distance)
+
+  - type: quiz
+    id: plus-equals
+    check: output
+    question: What does this program print?
+    code: |
+      turns = 1
+      turns += 2
+      turns += 2
+      print(turns)
+    choices: ["1", "3", "5", "turns"]
+    answer: 2
+    explain: "1, then 1 + 2 = 3, then 3 + 2 = 5."
+
+  - type: challenge
+    id: there-and-back
+    title: There and Back Again
+    summary: Visit the garage and come home, using one variable.
+    world: practice-field
+    instructions: |
+      Drive into the **garage**, then back into **home base**. Store the
+      distance in a variable called `trip`, and use it for both moves.
+    goals:
+      - {type: visit_zones, zones: [garage, base], in_order: true}
+      - {type: uses_variable_in, name: straight}
+    hints:
+      - "Drive backward with a minus sign: `drive_base.straight(-trip)`."
+      - "The garage is about 930 mm away."
+    starter: |
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      trip = 300
+      drive_base.straight(trip)
+    solution: |
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      trip = 930
+      drive_base.straight(trip)
+      drive_base.straight(-trip)

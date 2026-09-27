@@ -1,0 +1,19 @@
+# Five dots on a spiral path; each side is shorter than the last.
+id: spiral
+name: Spiral
+size: [2362, 1143]
+background: white
+grid: 100
+start: {x: 300, y: 1000, heading: 0}
+shapes:
+  - {type: circle, x: 1800, y: 1000, r: 30, color: yellow}
+  - {type: circle, x: 1800, y: 300, r: 30, color: yellow}
+  - {type: circle, x: 500, y: 300, r: 30, color: yellow}
+  - {type: circle, x: 500, y: 800, r: 30, color: yellow}
+  - {type: circle, x: 1600, y: 800, r: 30, color: yellow}
+zones:
+  - {id: dot-1, label: "1", type: circle, x: 1800, y: 1000, r: 80}
+  - {id: dot-2, label: "2", type: circle, x: 1800, y: 300, r: 80}
+  - {id: dot-3, label: "3", type: circle, x: 500, y: 300, r: 80}
+  - {id: dot-4, label: "4", type: circle, x: 500, y: 800, r: 80}
+  - {id: dot-5, label: "5", type: circle, x: 1600, y: 800, r: 80}

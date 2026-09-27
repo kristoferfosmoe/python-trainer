@@ -58,12 +58,12 @@ export interface GoalSpec {
 export interface Challenge {
   id: string;
   title: string;
-  world: string;
+  world?: string; // no world: a console-only challenge
   start?: Pose;
   time_limit?: number;
   realism?: string | boolean;
-  summary: string;
-  instructions: string;
+  summary?: string;
+  instructions?: string;
   goals?: GoalSpec[];
   hints?: string[];
   starter: string;
@@ -105,6 +105,13 @@ export interface GoalResult {
   detail: string;
 }
 
+export interface CodeStructure {
+  line: number;
+  body: [first: number, last: number];
+  kind: "for" | "while" | "if" | "elif";
+  target?: string;
+}
+
 export type VarEntry = [name: string, value: string, scope: "global" | "local"];
 
 export interface Trace {
@@ -122,6 +129,7 @@ export interface Trace {
   events: TraceEvent[];
   end: EndInfo;
   warnings: { line: number; message: string }[];
+  structure: CodeStructure[];
   goals: GoalResult[];
   stats: { lines: number; sim_ms: number; wall_ms: number };
 }
@@ -137,4 +145,62 @@ export interface RunRequest {
     seed?: number;
   };
   goals?: GoalSpec[];
+}
+
+// --- Lessons -------------------------------------------------------------------
+
+export interface TextBlock {
+  type: "text";
+  id: string;
+  markdown: string;
+}
+
+export interface CodeBlock {
+  type: "example" | "visualize";
+  id: string;
+  code: string;
+  expect_error?: boolean;
+}
+
+export type QuizChoice = string | { text: string; why?: string };
+
+export interface QuizBlock {
+  type: "quiz";
+  id: string;
+  question: string;
+  code?: string;
+  check?: "output";
+  choices: QuizChoice[];
+  answer: number;
+  explain?: string;
+}
+
+export interface ChallengeBlock extends Challenge {
+  type: "challenge";
+  ref?: string;
+}
+
+export type Block = TextBlock | CodeBlock | QuizBlock | ChallengeBlock;
+
+export interface Lesson {
+  id: string;
+  title: string;
+  summary: string;
+  concepts?: string[];
+  blocks: Block[];
+}
+
+export interface Unit {
+  id: string;
+  title: string;
+  icon?: string;
+  summary: string;
+  lessons: Lesson[];
+}
+
+export interface Course {
+  id: string;
+  title: string;
+  summary: string;
+  units: Unit[];
 }
