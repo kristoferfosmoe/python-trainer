@@ -588,28 +588,51 @@ practice quizzes.
 
 See **[DEPLOY.md](DEPLOY.md)** for the step-by-step guide. In short:
 
-- **One EC2 instance** (t3.small or t4g.small) with an Elastic IP and a
-  domain name.
+- **AWS, from one CloudFormation template** (`deploy/aws/python-trainer.yml`):
+  - An EC2 server (Ubuntu 24.04, t3.small by default) with an Elastic IP,
+    termination protection, an encrypted disk, IMDSv2 with a hop limit of 1,
+    and no SSH port (shell access is through Session Manager).
+  - Two ECR repositories (`web`, `caddy`): immutable tags, scanned on push,
+    keeping the last 30 versions.
+  - A private, encrypted S3 bucket for backups (90 days, kept if the stack
+    is deleted).
+  - GitHub's OIDC provider and a deploy role that only `main` and the
+    `production` environment can assume. It can only push to those two
+    repositories and run commands on that one server.
+  - Optionally, the Route 53 record.
+- **First boot** (`deploy/aws/bootstrap.sh`): Ubuntu's Docker packages, the
+  AWS CLI, a swap file, `deploy/.env` with secrets generated on the server,
+  and a nightly backup job.
 - **Docker Compose** (`deploy/docker-compose.yml`) runs three containers:
   - `caddy`: automatic HTTPS; serves the built app and Pyodide; proxies
     `/api`, `/admin` and `/static`.
   - `web`: Django on gunicorn. On start it migrates the database and
     re-imports `content/`, but only if every lesson passes its checks.
   - `db`: PostgreSQL 17 on a persistent volume.
+  The images are `$IMAGE_REPO/web:<commit>` and `$IMAGE_REPO/caddy:<commit>`.
+- **Continuous deployment** (GitHub Actions):
+  1. `ci.yml` runs every test.
+  2. On `main`, once everything passes, it builds the images and pushes them
+     to ECR, tagged with the commit (`APP_VERSION` is baked in).
+  3. `deploy.yml` sends `deploy/deploy.sh <commit>` to the server through
+     Systems Manager (`deploy/aws/ssm-deploy.sh`).
+  4. `deploy.sh` backs up the database, pulls the images, restarts `web` and
+     `caddy`, and waits for `/api/health` to report the new commit. If it
+     doesn't, it rolls back to the previous version and fails.
+  5. The workflow checks that the public site reports the new commit.
+  - Deploys run one at a time. `deploy.yml` can also be run by hand to
+    deploy (or go back to) any earlier commit.
+  - It's off until the repository variable `DEPLOY_TO_AWS` is `true`.
 - **Security headers** (Caddyfile):
   - HSTS, `nosniff`, a referrer policy and a permissions policy.
   - A **Content-Security-Policy** that allows only this origin, plus
     `'wasm-unsafe-eval'` so Pyodide can run WebAssembly.
   - Hashed assets are cached for a year; the page itself is `no-cache`.
-- **Backups**: `deploy/backup.sh` runs `pg_dump` nightly from cron to S3,
-  using the instance's IAM role, and keeps 14 days on disk.
-- **CI (GitHub Actions)**:
-  - Simulator and lesson checks (Python 3.11 and 3.14).
-  - Backend tests on PostgreSQL, plus a missing-migrations check.
-  - Typecheck, unit tests and build.
-  - Browser tests against the real backend.
-  - Docker image builds.
-  - An optional manual **Deploy** workflow (over SSH).
+- **Backups**: `deploy/backup.sh` runs `pg_dump` nightly and before every
+  deploy, keeps 14 days on the server, and uploads to S3.
+- **CI checks**: simulator and lesson checks (Python 3.11 and 3.14), backend
+  tests on PostgreSQL plus a missing-migrations check, typecheck, unit tests,
+  build, browser tests against the real backend, and Docker image builds.
 
 ## 12. Sign-in and privacy (children under 13)
 
@@ -656,7 +679,8 @@ python-trainer/
   frontend/     React + TS app: course map, lesson player, visualizer,
                 editor, renderer, worker (vitest, Playwright)
   content/      Courses, playground challenges, worlds and the robot (YAML)
-  deploy/       Dockerfile, docker-compose.yml, Caddyfile, backup script
+  deploy/       Dockerfile, docker-compose.yml, Caddyfile, deploy and backup scripts;
+                aws/: the CloudFormation stack, first-boot and Systems Manager scripts
   docs/         This document and DEPLOY.md
 ```
 
@@ -670,6 +694,7 @@ python-trainer/
 | **M4: Deploy** ✅ | EC2 + Compose + Caddy + backups + CI |
 | **M5: Rest of the curriculum** ✅ | Units 5–12: decisions, functions, lists and dictionaries, sensors, line following, proportional control, mission runner, debugging |
 | **M6: Coach tools and real robots** ✅ | Team pages: progress grid, coach-made accounts with printable cards, PIN resets, mentors, a student's code. "Run on your robot": code rewritten for the team's robot, ready for Pybricks. The hub's stop button in the simulator. |
+| **M7: Continuous deployment** ✅ | One CloudFormation stack (server, ECR, backups, GitHub OIDC role); every merge to main is tested, built, deployed through Systems Manager, health-checked, and rolled back if it doesn't start |
 | **Later** | Coaches running a student's code in the simulator (needs the separate origin in §12), a friendlier lesson authoring UI with a world editor, an AI tutor (a proxy endpoint on the server), pushable mission models, simulating a team's own robot, season-specific mats, sending code straight to the hub over Bluetooth, `hub_menu` and `multitask` in the simulator |
 
 ## 15. Decision log
@@ -689,3 +714,4 @@ python-trainer/
 | 2026-09-27 | Coach tools: coaches and mentors see their team's work; only coaches change accounts, and only kids' accounts. PINs are shown once, on printable cards. |
 | 2026-09-27 | Running on a real robot: lessons keep using the Trainer Bot, and code is rewritten for the team's robot (ports, directions, wheel sizes) when it's copied to Pybricks. Simulating each team's own robot comes later. |
 | 2026-09-27 | The center button stops programs in the simulator, like on a real hub. The Press to Start lesson teaches `set_stop_button()`. |
+| 2026-09-27 | Continuous deployment: CI builds images and pushes them to ECR, and deploys over AWS Systems Manager with GitHub OIDC. No SSH and no stored keys. Automatic rollback when the health check doesn't report the new version. Infrastructure is one CloudFormation stack. |

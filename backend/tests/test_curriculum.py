@@ -203,8 +203,10 @@ def test_lessons_remember_their_file():
     assert "comes from content/courses/fll-python/04-loops/01-for-loops.yaml" in form.fields["content_yaml"].help_text
 
 
-def test_health():
-    assert Client().get("/api/health").json() == {"ok": True}
+def test_health(settings):
+    assert Client().get("/api/health").json() == {"ok": True, "version": "dev"}
+    settings.APP_VERSION = "db1170dc71f8"
+    assert Client().get("/api/health").json()["version"] == "db1170dc71f8"
 
 
 def test_admin_yaml_is_readable_and_round_trips():

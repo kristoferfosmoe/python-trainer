@@ -1,228 +1,289 @@
-# Deploying Python Trainer on AWS EC2
+# Deploying Python Trainer on AWS
 
-This guide puts the site on one EC2 server with HTTPS, a PostgreSQL database
-and nightly backups to S3. It takes about an hour the first time. You need:
+This guide puts the site on one EC2 server with HTTPS, and sets up
+**continuous deployment**: every merge to `main` is tested, built and
+deployed by itself. Setting it up takes about 45 minutes the first time.
 
-- an AWS account,
-- a domain name you can add DNS records to (for example `trainer.yourteam.org`),
-- a computer with SSH.
+## What you get
 
-Everything runs in Docker on the server, in three containers:
-
-| Container | What it does |
-|---|---|
-| `caddy` | HTTPS (it gets and renews the certificate by itself), serves the web app, forwards `/api` and `/admin` to Django |
-| `web` | Django: accounts, lessons, progress, the admin. On every start it updates the database and re-imports the lessons from `content/` |
-| `db` | PostgreSQL. Its data lives in a Docker volume that survives restarts and rebuilds |
-
-Student code never runs on the server. It runs in each student's browser, so
-a small server is enough.
-
-## 1. Launch the server
-
-In the AWS console → **EC2** → **Launch instance**:
-
-| Setting | Value |
-|---|---|
-| Name | `python-trainer` |
-| Image | **Ubuntu Server 24.04 LTS** |
-| Instance type | **t3.small** (2 vCPU, 2 GB). **t4g.small** (ARM) also works and costs less. |
-| Key pair | Create one, or use your own, for SSH |
-| Storage | 20 GB gp3 |
-| Security group | Allow **SSH (22) from My IP**, **HTTP (80)** and **HTTPS (443)** from anywhere. Optionally allow **UDP 443** from anywhere, for HTTP/3. |
-
-Then:
-
-1. **Elastic IP**: EC2 → Elastic IPs → Allocate, then Associate it with the instance.
-   The address stays the same when the server restarts.
-2. **DNS**: at your domain provider, add an **A record** for your domain (say
-   `trainer.yourteam.org`) pointing to the Elastic IP. Wait until
-   `ping trainer.yourteam.org` shows that IP.
-
-## 2. Install Docker
-
-```bash
-ssh ubuntu@trainer.yourteam.org
-
-sudo apt update && sudo apt -y upgrade
-sudo apt -y install unattended-upgrades git   # automatic security updates
-curl -fsSL https://get.docker.com | sudo sh
-sudo usermod -aG docker ubuntu
-exit      # log out and back in so the docker group applies
+```
+merge to main ──▶ GitHub Actions: all tests pass
+                   ──▶ build the images, push them to Amazon ECR (tagged with the commit)
+                   ──▶ tell the server to deploy that commit (AWS Systems Manager)
+                          server: back up the database, pull the images, restart,
+                                  wait for /api/health to report the new commit
+                                  ✖ didn't start? go back to the previous version
+                   ──▶ check https://your-site/api/health answers with the new commit
 ```
 
-## 3. Configure and start the site
+- **One server** runs three containers with Docker Compose: `caddy` (HTTPS,
+  certificates renew by themselves), `web` (Django) and `db` (PostgreSQL).
+  Student code runs in the students' browsers, so a small server is plenty.
+- **Safe deploys**: a database backup before every deploy, a health check,
+  and an automatic rollback if the new version doesn't come up.
+- **Nightly backups** to a private S3 bucket (kept 90 days).
+- **No keys or passwords in GitHub.** GitHub signs in to AWS with OIDC, and
+  may only push images and run the deploy on this one server. The server
+  has no SSH port: you get a shell in the browser with Session Manager.
 
-```bash
-ssh ubuntu@trainer.yourteam.org
-git clone https://github.com/kristoferfosmoe/python-trainer.git
-cd python-trainer/deploy
-cp .env.example .env
-nano .env
-```
+Everything on the AWS side comes from one CloudFormation template,
+[`deploy/aws/python-trainer.yml`](../deploy/aws/python-trainer.yml).
 
-In `.env`, set:
+**You need:** an AWS account you can create IAM roles in, a domain name you
+can add a DNS record to (like `trainer.yourteam.org`), and admin access to
+the GitHub repository.
 
-- **`DOMAIN`**: your domain, like `trainer.yourteam.org`.
-- **`DJANGO_ALLOWED_HOSTS`**: the same domain.
-- **`DJANGO_CSRF_TRUSTED_ORIGINS`**: `https://` + the domain.
-- **`DJANGO_SECRET_KEY`** and **`POSTGRES_PASSWORD`**: long random values. Make
-  them with:
+---
 
-  ```bash
-  python3 -c "import secrets; print(secrets.token_urlsafe(50))"
-  ```
+## 1. Create the AWS stack
 
-Keep `.env` private. It's ignored by git and must never be committed.
+The easiest way is **AWS CloudShell**, a terminal in the AWS console that
+already has the AWS CLI and git.
 
-Start everything (the first build takes a few minutes):
-
-```bash
-docker compose up -d --build
-docker compose logs -f web      # Ctrl+C to stop watching
-```
-
-You should see the database migrations run, then
-`Imported ... worlds, ... playground challenges, 1 course(s) and 28 lessons`.
-Open `https://trainer.yourteam.org`. Caddy gets the HTTPS certificate on the
-first visit, which can take a few seconds.
-
-Health check: `https://trainer.yourteam.org/api/health` answers `{"ok": true}`.
-
-## 4. Create your admin account and a team
-
-```bash
-docker compose exec web python manage.py createsuperuser
-```
-
-Pick a username and a strong password (at least 10 characters). Then go to
-`https://trainer.yourteam.org/admin/`:
-
-- **Teams → Add team**: give it a name. A **join code** (like `K7Q2MX`) is made
-  automatically. Students type it when they sign up, or on their account page.
-  (Coaches can also make teams in the app.)
-- **Coaches** (other adults): make their account on the server:
-
-  ```bash
-  docker compose exec web python manage.py create_coach coach_kim --team "Brick Builders"
-  ```
-
-  It asks for a password (at least 10 characters) and makes the team if it
-  doesn't exist yet. Or in the admin: **Users → Add user**, set *Kind* to
-  "Adult", then add them to the team as **Coach** under **Memberships**.
-  Coaches can also make more teams themselves, in the app.
-- **Everything else happens in the app**: coaches sign in and open
-  **👥 Teams** to see progress, make student accounts (with printable
-  sign-in cards), give new PINs, make mentors and describe the team's robot.
-- **A student forgot their PIN**: their coach can make a new one on the
-  student's page. In the admin, tick them in **Users**, then choose "Give
-  selected students a new PIN"; it appears at the top of the page.
-- **Lessons**: under **Curriculum → Lessons**. Saving a lesson runs all of its
-  code first, and refuses the save if something is wrong. Lessons that come
-  from files in `content/` are replaced on every deploy. To keep your own
-  version, give it a new slug, or edit the file in the repository instead.
-
-## 5. Nightly backups to S3
-
-1. **S3 → Create bucket**, e.g. `yourteam-trainer-backups`. Keep "Block all
-   public access" on. Optionally add a lifecycle rule to delete backups after 90
-   days.
-2. **IAM → Roles → Create role** → *AWS service* → *EC2*. Add an inline policy
-   (put your bucket name in):
-
-   ```json
-   {
-     "Version": "2012-10-17",
-     "Statement": [{
-       "Effect": "Allow",
-       "Action": ["s3:PutObject"],
-       "Resource": "arn:aws:s3:::yourteam-trainer-backups/*"
-     }]
-   }
-   ```
-
-3. **EC2 → your instance → Actions → Security → Modify IAM role**: choose that
-   role.
-4. On the server:
+1. Sign in to the AWS console. At the top right, pick the **region** closest
+   to your students (for example *US West (Oregon)*).
+2. Open **CloudShell** (the `>_` icon in the top bar) and run, with your
+   domain instead of `trainer.yourteam.org`:
 
    ```bash
-   sudo snap install aws-cli --classic
-   # In deploy/.env: BACKUP_S3_URI=s3://yourteam-trainer-backups/python-trainer
-   sudo mkdir -p /var/backups/python-trainer && sudo chown ubuntu /var/backups/python-trainer
-   ./backup.sh          # test it once
-   crontab -e           # add this line to run it every night at 03:15 UTC:
-   15 3 * * * /home/ubuntu/python-trainer/deploy/backup.sh >> /home/ubuntu/backup.log 2>&1
+   git clone https://github.com/kristoferfosmoe/python-trainer.git
+   cd python-trainer
+
+   # The current Ubuntu 24.04 image for this region
+   AMI=$(aws ssm get-parameter \
+     --name /aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id \
+     --query Parameter.Value --output text)
+
+   aws cloudformation deploy \
+     --stack-name python-trainer \
+     --template-file deploy/aws/python-trainer.yml \
+     --capabilities CAPABILITY_IAM \
+     --parameter-overrides DomainName=trainer.yourteam.org UbuntuAmi=$AMI
    ```
+
+   It takes about 3 minutes. Then show what it made:
+
+   ```bash
+   aws cloudformation describe-stacks --stack-name python-trainer \
+     --query 'Stacks[0].Outputs' --output table
+   ```
+
+   Keep this table open: the next steps use its values.
+
+**Optional parameters**, added after `UbuntuAmi=$AMI`:
+
+| Parameter | Default | What it does |
+|---|---|---|
+| `InstanceType=t3.micro` | `t3.small` | `t3.small` (2 GB, about $15/month) is plenty for a few teams. `t3.micro` (1 GB, about $8) works for a handful of students. |
+| `HostedZoneId=Z0123…` | none | If your domain's DNS is in Route 53, the stack adds the DNS record for you (skip step 2). |
+| `GitHubOidcProviderArn=arn:aws:iam::<account>:oidc-provider/token.actions.githubusercontent.com` | none | Only if the stack fails with *"Provider with url https://token.actions.githubusercontent.com already exists"*: your account already trusts GitHub, so reuse that. |
+| `GitHubRepository=you/python-trainer` | `kristoferfosmoe/python-trainer` | If you deploy from a fork. |
+
+The server sets itself up in the background for about 5 more minutes:
+Docker, the AWS CLI, a settings file with new random secrets, and nightly
+backups. It doesn't start the site yet; the first deploy does.
+
+## 2. Point your domain at the server
+
+At your domain's DNS provider, add an **A record** for your domain (for
+example `trainer` in the `yourteam.org` zone) with the **ServerIp** from the
+table. Wait until `nslookup trainer.yourteam.org` shows that IP. (If you
+passed `HostedZoneId`, the stack already did this.)
+
+## 3. Connect GitHub
+
+In the GitHub repository:
+
+1. **Settings → General → Default branch**: switch to `main`, so the
+   *Run workflow* buttons use it and pull requests go there.
+2. **Settings → Secrets and variables → Actions → Variables tab → New
+   repository variable**. Add these six, using the values from the stack's
+   outputs table (they're IDs and addresses, not secrets):
+
+   | Name | Value |
+   |---|---|
+   | `AWS_REGION` | **Region**, e.g. `us-west-2` |
+   | `AWS_DEPLOY_ROLE_ARN` | **DeployRoleArn** |
+   | `EC2_INSTANCE_ID` | **InstanceId** |
+   | `IMAGE_REPO` | **ImageRepository** |
+   | `SITE_URL` | **SiteUrl**, e.g. `https://trainer.yourteam.org` |
+   | `DEPLOY_TO_AWS` | `true` |
+
+3. **Settings → Environments → New environment** named `production`. Under
+   *Deployment branches and tags*, choose **Selected branches** and add
+   `main`. Optionally add yourself as a **required reviewer**, so each deploy
+   waits for your OK.
+
+## 4. The first deploy
+
+**Actions → CI → Run workflow**, on branch `main`. It runs every test, then
+*Push images to the registry*, then *Deploy*. Open the *Deploy* job to see
+the server's output. The first deploy takes a few minutes: the server
+downloads everything, sets up the database and gets the HTTPS certificate.
+
+When it's green, open your site. `https://trainer.yourteam.org/api/health`
+shows `{"ok": true, "version": "<the commit>"}`.
+
+From now on you don't need to do anything: **every merge to `main`
+deploys by itself.**
+
+## 5. Make your admin and coach accounts
+
+Open a shell on the server: the stack output **ShellAccess** is a link
+straight to it (or EC2 → Instances → *python-trainer* → **Connect** →
+**Session Manager** → **Connect**). Then:
+
+```bash
+sudo /opt/python-trainer/deploy/manage.sh createsuperuser
+sudo /opt/python-trainer/deploy/manage.sh create_coach coach_kim --team "Brick Builders"
+```
+
+Pick strong passwords (at least 10 characters). The admin is at
+`https://trainer.yourteam.org/admin/`. Coaches sign in on the site and use
+**👥 Teams** for everything else: progress, student accounts and sign-in
+cards, new PINs, mentors, and the team's robot.
+
+---
+
+## How a deploy works
+
+1. A merge to `main` starts **CI**. If any test fails, nothing is deployed.
+2. **Push images to the registry** builds the `web` and `caddy` images and
+   pushes them to ECR, tagged with the commit. The registry keeps the last
+   30 versions.
+3. **Deploy** asks the server, through Systems Manager, to check out the
+   commit and run [`deploy/deploy.sh`](../deploy/deploy.sh), which:
+   - backs up the database (to `/var/backups/python-trainer` and S3),
+   - pulls the new images and restarts `web` and `caddy` (`db` keeps running),
+   - on start, Django updates the database and reloads the lessons,
+   - waits up to 5 minutes for `/api/health` to report the new commit,
+   - if it doesn't, shows the logs, **goes back to the previous version**,
+     and the job fails.
+4. Finally the job checks the public site answers with the new commit.
+
+Deploys run one at a time. The site is unavailable for a few seconds while
+the containers restart. Every deploy is listed in
+`/var/log/python-trainer-deploys.log` on the server.
+
+**Going back to an older version by hand:** **Actions → Deploy → Run
+workflow**, and type the commit (the short hash from the commit list is
+fine). Any commit that was deployed before works, because its images are
+still in the registry. Database changes aren't undone; this project's
+migrations only add things, so older versions keep working.
+
+## Everyday commands (in a Session Manager shell)
+
+```bash
+cd /opt/python-trainer/deploy
+sudo docker compose ps                    # what's running
+sudo docker compose logs -f web           # Django's log (Ctrl+C to stop)
+sudo docker compose logs -f caddy         # HTTPS and web server log
+cat /var/log/python-trainer-deploys.log   # deploy history
+sudo ./manage.sh import_content           # reload the lessons now
+```
+
+## Backups
+
+- **Nightly** at 03:15 UTC, and **before every deploy**.
+- Kept on the server for 14 days (`/var/backups/python-trainer`) and in the
+  S3 bucket (**BackupBucket** in the outputs) for 90 days. The bucket is
+  private, encrypted, and kept even if you delete the stack.
 
 **Restoring** a backup (this replaces the current data):
 
 ```bash
-cd ~/python-trainer/deploy
-aws s3 cp s3://yourteam-trainer-backups/python-trainer/trainer-<date>.sql.gz .
-gunzip -c trainer-<date>.sql.gz | docker compose exec -T db psql -q -U trainer trainer
-docker compose restart web
+cd /opt/python-trainer/deploy
+aws s3 ls s3://<BackupBucket>/python-trainer/
+aws s3 cp s3://<BackupBucket>/python-trainer/trainer-<date>.sql.gz .
+gunzip -c trainer-<date>.sql.gz | sudo docker compose exec -T db psql -q -U trainer trainer
+sudo docker compose restart web
 ```
 
-## 6. Updating the site
+## Changing the server
 
-```bash
-cd ~/python-trainer
-git pull
-cd deploy && docker compose up -d --build
-```
+- **A bigger or smaller server:** in CloudShell, in the `python-trainer`
+  folder:
 
-The web container runs any database changes and re-imports the lessons when it
-starts. If a lesson file has a problem, the import is skipped, the site keeps
-the lessons it had, and the log says what's wrong.
+  ```bash
+  aws cloudformation deploy --stack-name python-trainer \
+    --template-file deploy/aws/python-trainer.yml --capabilities CAPABILITY_IAM \
+    --parameter-overrides InstanceType=t3.medium
+  ```
 
-**One-click deploys (optional)**: the **Deploy** workflow in GitHub Actions does
-the same over SSH. It needs four repository secrets:
+  Settings you leave out keep their values. The server restarts, which takes
+  a minute.
+- ⚠️ **Don't re-run the command from step 1 later.** It looks up the newest
+  Ubuntu image, and a new image (like a new disk size or SSH key) makes
+  CloudFormation build a **new, empty server** and move the site to it.
+  Your data stays safe on the old server, which is kept, but the site would
+  start empty. To move to a new server on purpose: take a backup, update
+  the stack, run the deploy, restore the backup, then delete the old server
+  (turn off its termination protection first: EC2 → Instances → select it →
+  Actions → Instance settings → Change termination protection).
+- **Deleting everything:** turn off termination protection as above, then
+  `aws cloudformation delete-stack --stack-name python-trainer`. The backup
+  bucket is kept.
 
-| Secret | Value |
+## Costs (rough, on-demand)
+
+| Item | Per month |
 |---|---|
-| `EC2_HOST` | your domain |
-| `EC2_USER` | `ubuntu` |
-| `EC2_SSH_KEY` | the private key of a key pair used only for deploys. Add its public key to `~/.ssh/authorized_keys` on the server. |
-| `EC2_KNOWN_HOSTS` | the output of `ssh-keyscan -H trainer.yourteam.org` |
-
-You'll also need to allow SSH from GitHub's addresses, or run the steps above
-by hand.
-
-## Everyday commands
-
-```bash
-cd ~/python-trainer/deploy
-docker compose ps                    # what's running
-docker compose logs -f web           # Django's log
-docker compose logs -f caddy         # HTTPS and web server log
-docker compose restart web           # restart Django
-docker compose exec web python manage.py import_content   # reload lessons now
-```
-
-## Costs (rough, 2026 on-demand prices)
-
-- t3.small: about $15 a month (t4g.small: about $12).
-- Elastic IP, 20 GB disk and S3 backups: a few dollars a month.
+| t3.small server (or t3.micro) | about $15 (or $8) |
+| Its public IPv4 address | about $3.60 |
+| 20 GB disk | about $1.60 |
+| Image registry and backups | a few cents |
 
 ## Troubleshooting
 
 | Problem | Try |
 |---|---|
-| The browser says the certificate is invalid | DNS must point at the Elastic IP *before* Caddy starts: `docker compose logs caddy`, then `docker compose restart caddy` |
-| "502 Bad Gateway" | Django isn't up yet or crashed: `docker compose logs web` |
-| "Bad Request (400)" | `DJANGO_ALLOWED_HOSTS` doesn't match the domain |
-| Sign-in fails with "session expired" | `DJANGO_CSRF_TRUSTED_ORIGINS` must be `https://` + your domain |
-| A student is locked out | Wait 5 minutes, or use "Unlock selected accounts" on Users in the admin |
-| Python never starts in the browser | School networks sometimes block WebAssembly. Try another network, and check the browser console. |
+| Deploy: *"isn't connected to Systems Manager"* | A new server needs about 5 minutes. Check it's running in EC2 → Instances. |
+| Deploy: *"The server never finished setting up"* | In a Session Manager shell: `sudo tail -50 /var/log/python-trainer-bootstrap.log`. Fix the problem and run `sudo /opt/python-trainer/deploy/aws/bootstrap.sh` again. |
+| Deploy: *"Couldn't download the images"* | The *Push images* job didn't run for that commit (for example, `DEPLOY_TO_AWS` was set later). Run **Actions → CI → Run workflow** on `main`. |
+| Deploy: *"didn't come up"* and rolled back | The job's output shows the new version's logs. The previous version is running. |
+| Deploy succeeded, but *"doesn't answer with"* the new version | DNS doesn't point at the server yet, or HTTPS couldn't get a certificate: `sudo docker compose logs caddy`. |
+| The *Push images* and *Deploy* jobs are skipped | `DEPLOY_TO_AWS` isn't `true`, or it wasn't a push to `main`. |
+| GitHub: *"Not authorized to perform sts:AssumeRoleWithWebIdentity"* | `AWS_DEPLOY_ROLE_ARN` is wrong, the repository name differs from the stack's `GitHubRepository`, or the `production` environment allows other branches. |
+| "Bad Request (400)" in the browser | The domain doesn't match `DJANGO_ALLOWED_HOSTS` in `/opt/python-trainer/deploy/.env`. Fix it and run `sudo docker compose up -d`. |
+| A student is locked out | Wait 5 minutes, or their coach unlocks them on the student's page. |
+| Python never starts in the browser | Some school networks block WebAssembly. Try another network and check the browser console. |
 
 ## Security notes
 
-- Keep port 22 open to your own IP only, or use AWS Systems Manager Session
-  Manager instead of SSH.
-- `unattended-upgrades` installs Ubuntu security updates automatically.
-  Rebuild the containers now and then (`docker compose build --pull`) to get
-  updated base images.
+- **No SSH port.** Shell access is through Session Manager, which uses your
+  AWS sign-in and is logged. (For SSH anyway, set `SshKeyName` and
+  `SshAllowedCidr`.)
+- **GitHub holds no AWS keys.** Its role can only be used from `main` or the
+  `production` environment, and can only push to these two image
+  repositories and run commands on this one server.
+- **Secrets are made on the server** (`/opt/python-trainer/deploy/.env`,
+  readable only by root) and never leave it.
+- The containers can't reach the server's AWS credentials (IMDSv2 with a
+  hop limit of 1). The disk and the backups are encrypted.
+- Ubuntu installs security updates by itself (`unattended-upgrades`). Each
+  deploy builds on the newest Python and Caddy base images, and ECR scans
+  every image (see the findings in the ECR console). The PostgreSQL image is
+  updated by hand: `sudo docker compose pull db && sudo docker compose up -d db`.
 - Students have no email or real name on file. Tell them not to use their
   real name as a username.
 - Sign-in protection: an account locks for 5 minutes after 5 wrong PINs, and
   a computer is blocked for 15 minutes after 30 failed sign-ins.
+
+---
+
+## Without the pipeline: build on any server
+
+To run the site on a server you manage yourself (any Linux machine with
+Docker), without AWS or continuous deployment:
+
+```bash
+git clone https://github.com/kristoferfosmoe/python-trainer.git
+cd python-trainer/deploy
+cp .env.example .env        # fill in DOMAIN, the hosts, and two long random secrets
+docker compose up -d --build
+docker compose exec web python manage.py createsuperuser
+```
+
+To update it: `git pull && docker compose up -d --build`. For backups, run
+`deploy/backup.sh` nightly from cron. It uploads to S3 if `BACKUP_S3_URI` is
+set and the AWS CLI can write there.

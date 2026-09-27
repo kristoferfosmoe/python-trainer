@@ -1,0 +1,336 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Python Trainer on one EC2 server, deployed by GitHub Actions on every merge
+  to main: image registry (ECR), server, backups bucket, and a role GitHub
+  can use without stored keys. See docs/DEPLOY.md.
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label: {default: Site}
+        Parameters: [DomainName, HostedZoneId]
+      - Label: {default: Server}
+        Parameters: [UbuntuAmi, InstanceType, DiskSize, SshKeyName, SshAllowedCidr]
+      - Label: {default: GitHub}
+        Parameters: [GitHubRepository, GitHubBranch, GitHubOidcProviderArn]
+      - Label: {default: Names}
+        Parameters: [Name]
+
+Parameters:
+  DomainName:
+    Type: String
+    Description: The site's address, e.g. trainer.yourteam.org (no https://).
+    AllowedPattern: "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$"
+    ConstraintDescription: a lowercase domain name like trainer.yourteam.org
+  HostedZoneId:
+    Type: String
+    Default: ""
+    Description: Optional. If the domain's DNS is in Route 53, its hosted zone ID, and the stack adds the A record. Otherwise leave empty and add the record yourself.
+  UbuntuAmi:
+    Type: AWS::EC2::Image::Id
+    Description: >-
+      Ubuntu 24.04 (x86_64) AMI for your region. Find it with:
+      aws ssm get-parameter --name /aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id --query Parameter.Value --output text
+      (It's a fixed value on purpose: a new AMI would replace the server.)
+  InstanceType:
+    Type: String
+    Default: t3.small
+    AllowedValues: [t3.micro, t3.small, t3.medium, t3a.small, t3a.medium]
+    Description: t3.small (2 GB) is plenty for a few teams. t3.micro (1 GB) works for a handful of students.
+  DiskSize:
+    Type: Number
+    Default: 20
+    MinValue: 12
+    MaxValue: 200
+    Description: Disk size in GB (the database, images and local backups live here).
+  SshKeyName:
+    Type: String
+    Default: ""
+    Description: Optional EC2 key pair for SSH. Not needed; use Session Manager instead.
+  SshAllowedCidr:
+    Type: String
+    Default: ""
+    Description: Optional. Allow SSH (port 22) from this range, e.g. 203.0.113.7/32. Empty means no SSH port.
+  GitHubRepository:
+    Type: String
+    Default: kristoferfosmoe/python-trainer
+    Description: owner/name of the GitHub repository that deploys here.
+    AllowedPattern: "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+  GitHubBranch:
+    Type: String
+    Default: main
+    Description: Merges to this branch are deployed.
+  GitHubOidcProviderArn:
+    Type: String
+    Default: ""
+    Description: Leave empty to create GitHub's OIDC provider. If your AWS account already has one for token.actions.githubusercontent.com, paste its ARN.
+  Name:
+    Type: String
+    Default: python-trainer
+    AllowedPattern: "^[a-z][a-z0-9-]{1,30}$"
+    Description: Used in resource names (lowercase).
+
+Conditions:
+  UseRoute53: !Not [!Equals [!Ref HostedZoneId, ""]]
+  UseKeyPair: !Not [!Equals [!Ref SshKeyName, ""]]
+  AllowSsh: !Not [!Equals [!Ref SshAllowedCidr, ""]]
+  CreateOidcProvider: !Equals [!Ref GitHubOidcProviderArn, ""]
+
+Resources:
+  # --- Where CI puts the images --------------------------------------------------------
+  WebRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub ${Name}/web
+      ImageTagMutability: IMMUTABLE
+      ImageScanningConfiguration: {ScanOnPush: true}
+      EmptyOnDelete: true
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {"rules": [{"rulePriority": 1, "description": "Keep the last 30 versions",
+            "selection": {"tagStatus": "any", "countType": "imageCountMoreThan", "countNumber": 30},
+            "action": {"type": "expire"}}]}
+
+  CaddyRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub ${Name}/caddy
+      ImageTagMutability: IMMUTABLE
+      ImageScanningConfiguration: {ScanOnPush: true}
+      EmptyOnDelete: true
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {"rules": [{"rulePriority": 1, "description": "Keep the last 30 versions",
+            "selection": {"tagStatus": "any", "countType": "imageCountMoreThan", "countNumber": 30},
+            "action": {"type": "expire"}}]}
+
+  # --- Database backups (kept if the stack is deleted) ---------------------------------------
+  BackupBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault: {SSEAlgorithm: AES256}
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-old-backups
+            Status: Enabled
+            ExpirationInDays: 90
+      Tags:
+        - {Key: app, Value: !Ref Name}
+
+  # --- The server ---------------------------------------------------------------------------
+  ServerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: {Service: ec2.amazonaws.com}
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        # Systems Manager: GitHub runs deploys through it, and you get a shell
+        # in the browser (Session Manager) without opening SSH.
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: pull-images-and-back-up
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: "*"
+              - Effect: Allow
+                Action: [ecr:BatchGetImage, ecr:GetDownloadUrlForLayer, ecr:BatchCheckLayerAvailability]
+                Resource: [!GetAtt WebRepository.Arn, !GetAtt CaddyRepository.Arn]
+              - Effect: Allow
+                Action: [s3:PutObject, s3:GetObject]
+                Resource: !Sub ${BackupBucket.Arn}/*
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt BackupBucket.Arn
+
+  ServerInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles: [!Ref ServerRole]
+
+  ServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub ${Name} web server (HTTP and HTTPS)
+      SecurityGroupIngress:
+        - {IpProtocol: tcp, FromPort: 80, ToPort: 80, CidrIp: 0.0.0.0/0, Description: HTTP (redirects to HTTPS)}
+        - {IpProtocol: tcp, FromPort: 443, ToPort: 443, CidrIp: 0.0.0.0/0, Description: HTTPS}
+        - {IpProtocol: udp, FromPort: 443, ToPort: 443, CidrIp: 0.0.0.0/0, Description: HTTP/3}
+        - {IpProtocol: tcp, FromPort: 80, ToPort: 80, CidrIpv6: "::/0", Description: HTTP over IPv6}
+        - {IpProtocol: tcp, FromPort: 443, ToPort: 443, CidrIpv6: "::/0", Description: HTTPS over IPv6}
+        - !If
+          - AllowSsh
+          - {IpProtocol: tcp, FromPort: 22, ToPort: 22, CidrIp: !Ref SshAllowedCidr, Description: SSH}
+          - !Ref AWS::NoValue
+      Tags:
+        - {Key: Name, Value: !Ref Name}
+
+  Server:
+    Type: AWS::EC2::Instance
+    # If an update ever replaces the server, keep the old one (it has the data).
+    # Deleting the stack deletes it, once termination protection is turned off.
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Delete
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks: [W3011]
+    Properties:
+      ImageId: !Ref UbuntuAmi
+      InstanceType: !Ref InstanceType
+      IamInstanceProfile: !Ref ServerInstanceProfile
+      SecurityGroupIds: [!GetAtt ServerSecurityGroup.GroupId]
+      KeyName: !If [UseKeyPair, !Ref SshKeyName, !Ref AWS::NoValue]
+      # The database lives on this server: protect it from being terminated,
+      # including by a stack update that would replace it.
+      DisableApiTermination: true
+      MetadataOptions:
+        HttpTokens: required
+        HttpPutResponseHopLimit: 1 # containers can't reach the server's AWS credentials
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeType: gp3
+            VolumeSize: !Ref DiskSize
+            Encrypted: true
+            DeleteOnTermination: true
+      Tags:
+        - {Key: Name, Value: !Ref Name}
+        - {Key: app, Value: !Ref Name}
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -euxo pipefail
+          exec > >(tee -a /var/log/python-trainer-bootstrap.log) 2>&1
+          cat > /etc/python-trainer.env <<'EOF'
+          DOMAIN=${DomainName}
+          IMAGE_REPO=${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${Name}
+          BACKUP_S3_URI=s3://${BackupBucket}/${Name}
+          REPO_URL=https://github.com/${GitHubRepository}.git
+          BRANCH=${GitHubBranch}
+          EOF
+          # Ubuntu includes git. Retry: the Elastic IP is attached during boot.
+          for n in 1 2 3 4 5 6; do
+            git clone --branch ${GitHubBranch} https://github.com/${GitHubRepository}.git /opt/python-trainer && break
+            rm -rf /opt/python-trainer; sleep $((n * 10))
+          done
+          /opt/python-trainer/deploy/aws/bootstrap.sh
+
+  ServerAddress:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      InstanceId: !Ref Server
+      Tags:
+        - {Key: Name, Value: !Ref Name}
+
+  DnsRecord:
+    Type: AWS::Route53::RecordSet
+    Condition: UseRoute53
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      TTL: "300"
+      ResourceRecords: [!Ref ServerAddress]
+
+  # --- GitHub Actions: push images and deploy, without stored keys ------------------------------
+  GitHubOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: CreateOidcProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList: [sts.amazonaws.com]
+      ThumbprintList:
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+        - 1c58a3a8518e8759bf075b76b750d4f2df264fcd
+
+  DeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: Assumed by GitHub Actions to push images and deploy (only from the deploy branch or the production environment).
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !If [CreateOidcProvider, !Ref GitHubOidcProvider, !Ref GitHubOidcProviderArn]
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                "token.actions.githubusercontent.com:aud": sts.amazonaws.com
+              StringLike:
+                "token.actions.githubusercontent.com:sub":
+                  - !Sub repo:${GitHubRepository}:ref:refs/heads/${GitHubBranch}
+                  - !Sub repo:${GitHubRepository}:environment:production
+      Policies:
+        - PolicyName: push-images
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:BatchGetImage
+                  - ecr:CompleteLayerUpload
+                  - ecr:DescribeImages
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:InitiateLayerUpload
+                  - ecr:PutImage
+                  - ecr:UploadLayerPart
+                Resource: [!GetAtt WebRepository.Arn, !GetAtt CaddyRepository.Arn]
+        - PolicyName: deploy-to-the-server
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: ssm:SendCommand
+                Resource:
+                  - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/${Server}
+                  - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}::document/AWS-RunShellScript
+              - Effect: Allow
+                Action: [ssm:GetCommandInvocation, ssm:ListCommandInvocations, ssm:DescribeInstanceInformation]
+                Resource: "*"
+
+Outputs:
+  SiteUrl:
+    Value: !Sub https://${DomainName}
+  ServerIp:
+    Description: Point the domain's DNS A record here (unless the stack did it with Route 53).
+    Value: !Ref ServerAddress
+  InstanceId:
+    Description: "GitHub variable EC2_INSTANCE_ID"
+    Value: !Ref Server
+  ImageRepository:
+    Description: "GitHub variable IMAGE_REPO"
+    Value: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${Name}
+  DeployRoleArn:
+    Description: "GitHub variable AWS_DEPLOY_ROLE_ARN"
+    Value: !GetAtt DeployRole.Arn
+  Region:
+    Description: "GitHub variable AWS_REGION"
+    Value: !Ref AWS::Region
+  BackupBucket:
+    Value: !Ref BackupBucket
+  ShellAccess:
+    Description: Open a shell on the server in the browser, no SSH needed.
+    Value: !Sub https://${AWS::Region}.console.aws.amazon.com/systems-manager/session-manager/${Server}?region=${AWS::Region}

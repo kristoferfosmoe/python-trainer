@@ -1,5 +1,9 @@
-# Production: docker compose -f deploy/docker-compose.yml up -d --build
-# Settings come from deploy/.env (copy deploy/.env.example).
+# Production. Settings come from deploy/.env (copy deploy/.env.example).
+#
+# With the CD pipeline, CI builds the images and deploy/deploy.sh runs a
+# given version: IMAGE_REPO/web:IMAGE_TAG and IMAGE_REPO/caddy:IMAGE_TAG.
+# Without it, build on the server instead:
+#   docker compose -f deploy/docker-compose.yml up -d --build
 
 services:
   db:
@@ -18,6 +22,7 @@ services:
       retries: 10
 
   web:
+    image: ${IMAGE_REPO:-python-trainer}/web:${IMAGE_TAG:-latest}
     build:
       context: ..
       dockerfile: deploy/Dockerfile
@@ -32,6 +37,7 @@ services:
         condition: service_healthy
 
   caddy:
+    image: ${IMAGE_REPO:-python-trainer}/caddy:${IMAGE_TAG:-latest}
     build:
       context: ..
       dockerfile: deploy/Dockerfile

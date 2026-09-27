@@ -15,7 +15,8 @@ When it works, **🤖 Run on your robot** gets the code ready for
   cards, PIN resets, mentors, and each student's code,
 - running lesson code on a real robot through Pybricks,
 - lesson editing in the admin,
-- deployment to AWS EC2.
+- deployment to AWS: every merge to `main` is tested, built and deployed
+  by itself, with automatic rollback.
 
 Next up: an AI tutor and a friendlier lesson editor. See
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design and
@@ -29,7 +30,7 @@ Next up: an AI tutor and a friendlier lesson editor. See
 | `backend/` | Django + Django Ninja: sign-up and sign-in, teams and join codes, lessons served from the database, progress and saved code, and the admin where teachers edit lessons. |
 | `frontend/` | The web app: React + TypeScript + Vite. It has the course map, the lesson player, the step-by-step visualizer, quizzes, the CodeMirror editor, the mat renderer and playback. |
 | `content/` | The course (`courses/`), the playground challenges, the practice mats (worlds) and the robot, all as YAML files. They're imported into the database. |
-| `deploy/` | Docker images, Docker Compose (Caddy + Django + PostgreSQL), and the backup script. |
+| `deploy/` | Docker images, Docker Compose (Caddy + Django + PostgreSQL), the deploy and backup scripts, and `aws/`: the CloudFormation stack for AWS. |
 | `docs/` | Architecture, decisions and the deployment guide. |
 
 ## Run it locally

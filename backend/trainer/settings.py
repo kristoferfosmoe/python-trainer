@@ -35,7 +35,9 @@ if not SECRET_KEY:
         raise ImproperlyConfigured("Set DJANGO_SECRET_KEY in production.")
     SECRET_KEY = "development-only-not-secret"
 
-ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
+# Health checks inside the server call http://127.0.0.1:8000, so loopback is
+# always allowed. Caddy only passes on requests for the site's own domain.
+ALLOWED_HOSTS = [*env_list("DJANGO_ALLOWED_HOSTS", "localhost"), "127.0.0.1", "localhost"]
 CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
 
 INSTALLED_APPS = [
@@ -150,6 +152,9 @@ LOGIN_IP_WINDOW_MINUTES = 15
 
 # Lessons saved in the admin are checked in a separate process.
 LESSON_CHECK_TIMEOUT = int(os.environ.get("LESSON_CHECK_TIMEOUT", "90"))
+
+# The git commit this server runs, baked into the image by CI (see deploy/Dockerfile).
+APP_VERSION = os.environ.get("APP_VERSION", "dev")
 
 LOGGING = {
     "version": 1,

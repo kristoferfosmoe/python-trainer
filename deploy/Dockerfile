@@ -4,7 +4,9 @@
 #   --target caddy  Caddy with the built web app, serving HTTPS
 
 # --- Build the web app -------------------------------------------------------------
-FROM node:22-slim AS frontend-build
+# The web app is the same on every CPU, so build it natively even when making
+# images for another architecture (e.g. ARM servers).
+FROM --platform=$BUILDPLATFORM node:22-slim AS frontend-build
 WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
@@ -39,6 +41,9 @@ COPY content /app/content
 COPY deploy/start-web.sh /app/start-web.sh
 RUN DJANGO_ENV=production DJANGO_SECRET_KEY=only-for-collectstatic python manage.py collectstatic --noinput -v0 \
     && useradd --create-home --uid 1000 trainer
+# The git commit, shown by /api/health (CI passes --build-arg APP_VERSION=<sha>).
+ARG APP_VERSION=dev
+ENV APP_VERSION=$APP_VERSION
 USER trainer
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s \

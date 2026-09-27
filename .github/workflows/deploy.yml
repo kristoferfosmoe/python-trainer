@@ -1,38 +1,89 @@
-# Deploy to the EC2 server with one click (Actions tab → Deploy → Run workflow).
-# Optional: needs these repository secrets (see docs/DEPLOY.md):
-#   EC2_HOST         the server's domain name or IP
-#   EC2_USER         e.g. ubuntu
-#   EC2_SSH_KEY      a private key allowed to log in (a deploy-only key)
-#   EC2_KNOWN_HOSTS  the server's host key line (ssh-keyscan -H <host>)
+# Deploy a version to the EC2 server.
+#
+# - Automatically: CI calls this after every merge to main, once the tests
+#   pass and the images are pushed (see ci.yml).
+# - By hand: Actions → Deploy → Run workflow. Leave "version" empty for the
+#   newest commit, or give an older commit to go back to it.
+#
+# Setup (docs/DEPLOY.md): the AWS stack in deploy/aws/, then these repository
+# variables: AWS_REGION, AWS_DEPLOY_ROLE_ARN, EC2_INSTANCE_ID, SITE_URL.
+# No secrets: GitHub signs in to AWS with OIDC.
 name: Deploy
 
 on:
+  workflow_call:
+    inputs:
+      version:
+        description: The git commit to deploy (its images must be in the registry).
+        required: true
+        type: string
   workflow_dispatch:
+    inputs:
+      version:
+        description: Commit to deploy (empty = the newest commit on the branch you pick above)
+        required: false
+        type: string
 
-concurrency: deploy
+permissions:
+  contents: read
+  id-token: write # to sign in to AWS
+
+concurrency:
+  group: production
+  cancel-in-progress: false
 
 jobs:
   deploy:
+    name: Deploy to the server
     runs-on: ubuntu-latest
-    environment: production
+    timeout-minutes: 30
+    environment:
+      name: production
+      url: ${{ vars.SITE_URL }}
     steps:
-      - name: Pull and restart on the server
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Pick the version
+        id: version
         env:
-          SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
-          KNOWN_HOSTS: ${{ secrets.EC2_KNOWN_HOSTS }}
-          HOST: ${{ secrets.EC2_HOST }}
-          USER: ${{ secrets.EC2_USER }}
-          BRANCH: ${{ github.ref_name }}
+          WANTED: ${{ inputs.version || github.sha }}
         run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
-          ssh -i ~/.ssh/deploy_key "$USER@$HOST" "set -e
-            cd ~/python-trainer
-            git fetch origin '$BRANCH'
-            git checkout -q '$BRANCH'
-            git pull --ff-only origin '$BRANCH'
-            cd deploy
-            docker compose up -d --build
-            docker image prune -f"
+          version=$(git rev-parse --verify --quiet "${WANTED}^{commit}") || {
+            echo "::error::There's no commit called '$WANTED' in this repository."
+            exit 1
+          }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          git log -1 --format='Deploying %h: %s' "$version"
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Deploy on the server (through AWS Systems Manager)
+        env:
+          INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: deploy/aws/ssm-deploy.sh
+
+      - name: Check the site answers with the new version
+        if: vars.SITE_URL != ''
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          live=""
+          for attempt in $(seq 1 20); do
+            live=$(curl -fsS --max-time 10 "$SITE_URL/api/health" | jq -r .version) || live=""
+            if [ "$live" = "$VERSION" ]; then
+              echo "✔ $SITE_URL is running ${VERSION:0:12}"
+              echo "### ✔ Deployed \`${VERSION:0:12}\` to $SITE_URL" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "Attempt $attempt: the site says '${live:-no answer}', waiting…"
+            sleep 6
+          done
+          echo "::error::$SITE_URL doesn't answer with ${VERSION:0:12}. The server has it running, so check the DNS record and HTTPS (docker compose logs caddy)."
+          exit 1
