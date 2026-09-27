@@ -1,0 +1,13 @@
+# Park exactly 100 mm (sensor to wall) from the right-hand wall.
+id: parking-wall
+name: Parking Wall
+size: [2362, 1143]
+background: white
+grid: 100
+start: {x: 300, y: 570, heading: 0}
+shapes:
+  - {type: line, points: [[0, 460], [2362, 460]], width: 6, color: gray}
+  - {type: line, points: [[0, 680], [2362, 680]], width: 6, color: gray}
+  - {type: rect, x: 2145, y: 480, w: 25, h: 180, color: yellow}
+zones:
+  - {id: perfect, label: Perfect spot, type: rect, x: 2145, y: 480, w: 25, h: 180}

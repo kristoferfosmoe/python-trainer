@@ -1,0 +1,104 @@
+id: missions-as-functions
+title: Missions as Functions
+summary: Write each mission as a function and run them in order from a list.
+concepts: [functions, lists of functions, program structure]
+blocks:
+  - type: text
+    markdown: |
+      A robot game run has several **missions**. Good FLL programs give each
+      mission its own function, and every mission starts and ends in **home
+      base**:
+
+      ```python
+      def crane():
+          drive_base.straight(800)    # out to the crane
+          drive_base.straight(-800)   # back home
+      ```
+
+      Functions can even go in a **list**! Notice there are no `()` after
+      the names: you're putting the functions themselves in the list, not
+      running them yet.
+
+  - type: visualize
+    id: mission-list
+    code: |
+      def crane():
+          print("Doing the crane mission")
+
+      def bridge():
+          print("Doing the bridge mission")
+
+      missions = [crane, bridge]
+      for mission in missions:
+          mission()
+      print("All missions done!")
+
+  - type: quiz
+    id: brackets
+    question: What's the difference between `missions = [crane, bridge]` and `missions = [crane(), bridge()]`?
+    choices:
+      - {text: "The second one runs both missions right away, while making the list"}
+      - {text: "There's no difference", why: "The brackets `()` mean \"run it now\"."}
+      - {text: "The first one is an error", why: "Putting functions in a list is allowed in Python."}
+    answer: 0
+    explain: With `()` the missions run immediately and the list holds their results. Without `()` the list holds the missions themselves, ready to run later.
+
+  - type: challenge
+    id: two-missions
+    title: Two Missions
+    summary: Visit the crane, come home, visit the bridge, come home.
+    world: mission-field
+    time_limit: 60
+    instructions: |
+      Write two mission functions:
+
+      - `crane()`: drive to the orange **crane** and back home.
+      - `bridge()`: turn left, drive up to the pink **bridge**, come back,
+        and turn to face the way you started.
+
+      Put them in a `missions` list and run them with a loop. Finish in
+      **home** base.
+    goals:
+      - {type: visit_zones, zones: [crane, home, bridge], in_order: true}
+      - {type: end_in_zone, zone: home}
+      - {type: must_use, construct: def}
+      - {type: must_use, construct: list}
+    hints:
+      - "The crane is 800 mm straight ahead. The bridge is 700 mm up (turn left first: `turn(-90)`)."
+      - "`missions = [crane, bridge]` then `for mission in missions:` and `mission()`."
+    starter: |
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      def crane():
+          drive_base.straight(800)
+          drive_base.straight(-800)
+
+      crane()
+    solution: |
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      def crane():
+          drive_base.straight(800)
+          drive_base.straight(-800)
+
+      def bridge():
+          drive_base.turn(-90)
+          drive_base.straight(700)
+          drive_base.straight(-700)
+          drive_base.turn(90)
+
+      missions = [crane, bridge]
+      for mission in missions:
+          mission()

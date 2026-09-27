@@ -204,3 +204,46 @@ def test_driving_with_motors_cancels_drive_base_move(run):
     x, _, _ = final_pose(result)
     assert x < 1500 + 200
     assert printed(result) == ["True"]
+
+
+def test_stop_coasts_and_brake_stops_sooner(run):
+    def after(stop_call):
+        result = run(f"""
+            drive_base.drive(300, 0)
+            wait(1500)
+            print(drive_base.distance())
+            drive_base.{stop_call}()
+            wait(1000)
+            print(drive_base.distance())
+        """)
+        before, later = (int(v) for v in printed(result))
+        return later - before
+
+    coasted, braked = after("stop"), after("brake")
+    assert 35 < coasted < 55
+    assert 12 < braked < 25
+
+
+def test_robot_rolls_to_a_halt_when_the_program_ends(run):
+    result = run("""
+        drive_base.drive(300, 0)
+        wait(1000)
+    """)
+    x, _, _ = final_pose(result)
+    stopped_at = result["frames"]["x"][result["frames"]["t"].index(1000)]
+    assert x - stopped_at > 35
+    assert result["end"]["t"] > 1000
+
+
+def test_motor_stop_coasts(run):
+    result = run("""
+        arm = Motor(Port.E)
+        arm.run(500)
+        wait(100)
+        arm.stop()
+        print(arm.angle())
+        wait(500)
+        print(arm.angle())
+    """)
+    first, second = (int(v) for v in printed(result))
+    assert second > first

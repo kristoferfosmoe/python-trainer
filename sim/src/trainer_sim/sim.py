@@ -12,7 +12,7 @@ import random
 from pybricks.parameters import Button
 
 from .errors import DeviceError, StepLimit, TimeUp
-from .motion import SimMotor
+from .motion import SimMotor, Slowdown, coast
 from .robot import RobotSpec
 from .shapes import to_world
 from .snapshot import snapshot
@@ -249,7 +249,19 @@ class Simulation:
     def write_output(self, text):
         self.recorder.write(text)
 
+    SETTLE_LIMIT_MS = 2000
+
     def finish(self):
+        # Like a real hub: when the program ends, the motors stop and the
+        # robot rolls to a halt.
+        self.drivebases = []
+        for motor in self.motors.values():
+            if not isinstance(motor.control, Slowdown):
+                motor.control = coast(motor)
+        settle_until = self.phys_t + self.SETTLE_LIMIT_MS
+        while any(m.moving for m in self.motors.values()) and self.phys_t < settle_until:
+            self._tick()
+            self.now = max(self.now, self.phys_t)
         self.recorder.flush_output()
         self.recorder.frame(final=True)
         if self.module_frame is not None:

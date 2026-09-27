@@ -3,8 +3,8 @@
 from trainer_sim.context import current
 from trainer_sim.errors import ArgumentError, NotInSimulator
 from trainer_sim.motion import (
-    DEFAULT_MOTOR_ACCEL, MAX_MOTOR_SPEED, Hold, Idle, RunProfile, RunSpeed,
-    RunUntilStalled, TimedRun, Trapezoid,
+    DEFAULT_MOTOR_ACCEL, MAX_MOTOR_SPEED, Hold, RunProfile, RunSpeed,
+    RunUntilStalled, TimedRun, Trapezoid, brake, coast,
 )
 
 from ._args import flag, number, stop
@@ -39,7 +39,9 @@ def _then(value):
         return lambda m: Hold(m.angle)
     if value is Stop.NONE:
         return lambda m: RunSpeed(m.speed, DEFAULT_MOTOR_ACCEL, m.speed)
-    return lambda m: Idle()
+    if value is Stop.BRAKE:
+        return brake
+    return coast
 
 
 class _MotorControl:
@@ -142,10 +144,10 @@ class Motor:
     # --- Stopping ----------------------------------------------------------------
 
     def stop(self):
-        self.sim_motor.control = Idle()
+        self.sim_motor.control = coast(self.sim_motor)
 
     def brake(self):
-        self.sim_motor.control = Idle()
+        self.sim_motor.control = brake(self.sim_motor)
 
     def hold(self):
         self.sim_motor.control = Hold(self.sim_motor.angle)

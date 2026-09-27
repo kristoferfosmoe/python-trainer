@@ -11,6 +11,10 @@ import math
 
 MAX_MOTOR_SPEED = 1000.0  # deg/s, roughly a SPIKE Prime motor
 DEFAULT_MOTOR_ACCEL = 2000.0  # deg/s^2
+# After stop() a robot rolls (coasts) to a halt; brake() stops it faster.
+# At 300 mm/s the Trainer Bot rolls about 45 mm, or brakes in about 18 mm.
+COAST_DECEL = 2000.0  # deg/s^2
+BRAKE_DECEL = 5000.0  # deg/s^2
 
 
 class Trapezoid:
@@ -127,6 +131,36 @@ class Idle(Control):
     done = True
 
 
+class Slowdown(Control):
+    """Coast or brake from the current speed down to a stop.
+
+    It counts as done at once (stop() doesn't wait), but the motor keeps
+    turning until friction stops it.
+    """
+
+    done = True
+
+    def __init__(self, decel, current):
+        self.decel = abs(float(decel))
+        self.command = float(current)
+
+    def speed(self, motor, dt):
+        step = self.decel * dt
+        if abs(self.command) <= step:
+            self.command = 0.0
+        else:
+            self.command -= math.copysign(step, self.command)
+        return self.command
+
+
+def coast(motor):
+    return Slowdown(COAST_DECEL, motor.speed)
+
+
+def brake(motor):
+    return Slowdown(BRAKE_DECEL, motor.speed)
+
+
 class Hold(Control):
     """Actively hold an angle."""
 
@@ -237,6 +271,10 @@ class SimMotor:
         self.last_delta = 0.0
         self.speed = 0.0
         self.stalled = True
+
+    @property
+    def moving(self):
+        return abs(self.speed) > 1e-6
 
     def end_tick(self, dt):
         self.stall_time = self.stall_time + dt if self.stalled else 0.0

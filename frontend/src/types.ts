@@ -61,7 +61,7 @@ export interface Challenge {
   world?: string; // no world: a console-only challenge
   start?: Pose;
   time_limit?: number;
-  realism?: string | boolean;
+  realism?: Realism;
   summary?: string;
   instructions?: string;
   goals?: GoalSpec[];
@@ -71,6 +71,9 @@ export interface Challenge {
   /** Scripted hub button presses, e.g. a teammate pressing CENTER. */
   buttons?: ButtonPress[];
 }
+
+/** "on"/"off", or custom amounts: {slip, wheel_mismatch, gyro_drift, sensor_noise}. */
+export type Realism = string | boolean | Record<string, number>;
 
 export interface ButtonPress {
   at: number; // ms
@@ -148,7 +151,7 @@ export interface RunRequest {
   robot: RobotSpec;
   options: {
     time_limit?: number;
-    realism?: string | boolean;
+    realism?: Realism;
     start?: Pose;
     seed?: number;
     buttons?: ButtonPress[];

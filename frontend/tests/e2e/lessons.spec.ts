@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { LESSONS, open, runSolution } from "./helpers";
+import { LESSONS, UNIT_COUNT, open, runSolution } from "./helpers";
 
 test("the course map lists every unit and lesson", async ({ page }) => {
   await open(page);
-  await expect(page.getByRole("heading", { name: /Unit \d:/ })).toHaveCount(4);
+  await expect(page.getByRole("heading", { name: /Unit \d+:/ })).toHaveCount(UNIT_COUNT);
   await expect(page.locator(".lesson-tile")).toHaveCount(LESSONS.length);
   await expect(page.getByText(`0 of ${LESSONS.length} lessons complete`)).toBeVisible();
 });
@@ -67,7 +67,8 @@ test("every lesson challenge's solution passes in the browser's Python", async (
   for (const lesson of LESSONS) {
     for (const pageNumber of lesson.challengePages) {
       await page.goto(`/#/lesson/${lesson.id}/${pageNumber}`);
-      await expect(page.locator(".workspace")).toBeVisible();
+      // Wait for this lesson's workspace (the previous one can still be on screen).
+      await page.waitForFunction((id) => window.__trainer?.key().startsWith(`lesson/${id}/`), lesson.id);
       await runSolution(page);
       await expect(page.getByText("Challenge complete!"), `${lesson.id} page ${pageNumber}`).toBeVisible({ timeout: 30_000 });
       checked++;

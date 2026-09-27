@@ -1,0 +1,115 @@
+id: press-to-start
+title: Press to Start
+summary: Wait in home base for a teammate to press the button before each mission.
+concepts: [hub buttons, waiting loops, mission runner]
+blocks:
+  - type: text
+    markdown: |
+      In a real match, the robot comes home after each mission. Your team then
+      changes the attachment and **presses a button** to launch the next
+      mission. The hub's buttons tell you what's pressed:
+
+      ```python
+      while not hub.buttons.pressed():
+          wait(10)          # wait here until any button is pressed
+      ```
+
+      `hub.buttons.pressed()` gives you the buttons pressed right now. When
+      nothing is pressed, it's empty, and empty counts as False. So
+      `not hub.buttons.pressed()` means "no button is pressed".
+
+      To check for one particular button: `if Button.CENTER in hub.buttons.pressed():`
+
+  - type: quiz
+    id: empty-false
+    check: output
+    question: "Empty things count as False in Python. What does this print?"
+    code: |
+      pressed = []
+      if not pressed:
+          print("waiting")
+      else:
+          print("go!")
+    choices: ["waiting", "go!"]
+    answer: 0
+    explain: The list is empty, so `not pressed` is True and `waiting` prints.
+
+  - type: challenge
+    id: button-start
+    title: Press to Start
+    summary: A teammate presses the center button before each mission.
+    world: mission-field
+    time_limit: 60
+    buttons:
+      - {at: 1500, button: CENTER, duration: 300}
+      - {at: 14000, button: CENTER, duration: 300}
+      - {at: 26000, button: CENTER, duration: 300}
+    instructions: |
+      Your teammate will press the **center button** when it's time for each
+      mission (in the simulator the presses happen at about 1.5 s, 14 s and
+      26 s). Before **each** mission, wait until a button is pressed. Then
+      run the crane mission and the bridge mission, and finish at home.
+
+      A mission runner like this is how many FLL teams run their whole robot
+      game.
+    goals:
+      - {type: visit_zones, zones: [crane, home, bridge], in_order: true}
+      - {type: end_in_zone, zone: home}
+      - {type: min_calls, name: pressed}
+      - {type: must_use, construct: def}
+    hints:
+      - "Make a function `wait_for_button()` with the `while not hub.buttons.pressed():` loop inside."
+      - "In the mission loop: first `wait_for_button()`, then `mission()`."
+    starter: |
+      from pybricks.hubs import PrimeHub
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction, Button
+      from pybricks.robotics import DriveBase
+      from pybricks.tools import wait
+
+      hub = PrimeHub()
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      def crane():
+          drive_base.straight(800)
+          drive_base.straight(-800)
+
+      def bridge():
+          drive_base.turn(-90)
+          drive_base.straight(700)
+          drive_base.straight(-700)
+          drive_base.turn(90)
+
+      print("Waiting for the button...")
+    solution: |
+      from pybricks.hubs import PrimeHub
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction, Button
+      from pybricks.robotics import DriveBase
+      from pybricks.tools import wait
+
+      hub = PrimeHub()
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      def crane():
+          drive_base.straight(800)
+          drive_base.straight(-800)
+
+      def bridge():
+          drive_base.turn(-90)
+          drive_base.straight(700)
+          drive_base.straight(-700)
+          drive_base.turn(90)
+
+      def wait_for_button():
+          while not hub.buttons.pressed():
+              wait(10)
+
+      for mission in [crane, bridge]:
+          print("Waiting for the button...")
+          wait_for_button()
+          mission()

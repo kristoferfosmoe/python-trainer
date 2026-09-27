@@ -1,0 +1,82 @@
+id: wiggle-along
+title: Wiggle Along the Line
+summary: Follow a line by steering left or right based on one sensor reading.
+concepts: [line following, bang-bang control, edges]
+blocks:
+  - type: text
+    markdown: |
+      FLL tables are covered in black lines, and robots use them as roads.
+      The trick is to follow the **edge** of the line, not the middle:
+
+      - Sensor sees **white** (reflection above 50)? You're off the line, so
+        steer **toward** it.
+      - Sensor sees **black** (below 50)? You're on the line, so steer
+        **away**.
+
+      Keep doing that in a loop, and the robot wiggles along the edge. This
+      is called **bang-bang** control: it only ever steers hard left or hard
+      right.
+
+  - type: quiz
+    id: which-way
+    question: The robot follows the line's edge with the line on its **right**. The sensor reads 95 (white). Which way should it steer?
+    choices:
+      - {text: "Right, toward the line"}
+      - {text: "Left, away from the line", why: "It's already off the line, so steering away makes it worse."}
+      - {text: "Straight ahead", why: "It would drift further from the line."}
+    answer: 0
+    explain: White means you've drifted off the line. The line is on the right, so steer right to find it again.
+
+  - type: challenge
+    id: wiggle-follower
+    title: Wiggle Follower
+    summary: Follow the line past the right curve and along the top.
+    world: line-track
+    time_limit: 60
+    instructions: |
+      The sensor starts on the edge of the line, with the line on the robot's
+      **right**. Write a bang-bang line follower that gets the robot around
+      the **right curve** and onto the **top straight**.
+
+      Use a `StopWatch` to follow the line for about 32 seconds.
+    goals:
+      - {type: visit_zones, zones: [cp-right, cp-top], in_order: true}
+      - {type: must_use, construct: if}
+      - {type: must_use, construct: while}
+    hints:
+      - "`if line_sensor.reflection() < 50:` means you're on black."
+      - "On black: `drive_base.drive(100, -40)` (steer left). On white: `drive_base.drive(100, 40)` (steer right)."
+      - "Wrap it in `while watch.time() < 32000:`"
+    starter: |
+      from pybricks.pupdevices import Motor, ColorSensor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+      from pybricks.tools import wait, StopWatch
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+      line_sensor = ColorSensor(Port.C)
+
+      watch = StopWatch()
+      while watch.time() < 32000:
+          drive_base.drive(100, 0)
+      drive_base.stop()
+    solution: |
+      from pybricks.pupdevices import Motor, ColorSensor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+      from pybricks.tools import wait, StopWatch
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+      line_sensor = ColorSensor(Port.C)
+
+      watch = StopWatch()
+      while watch.time() < 32000:
+          if line_sensor.reflection() < 50:
+              drive_base.drive(100, -40)
+          else:
+              drive_base.drive(100, 40)
+      drive_base.stop()

@@ -1,0 +1,110 @@
+id: smooth-parking
+title: Smooth Parking
+summary: Slow down as you get close, so you stop exactly where you want.
+concepts: [proportional control, speed, min(), coasting]
+blocks:
+  - type: text
+    markdown: |
+      Real robots can't stop instantly. After `stop()` they **coast** (roll
+      on) a little, and the faster they go, the farther they roll. Try it:
+      this robot stops 100 mm from the wall at full speed, but where does it
+      end up?
+
+  - type: challenge
+    id: coasting-demo
+    title: Coasting
+    summary: Stop at full speed and watch the robot roll on.
+    world: parking-wall
+    starter: |
+      from pybricks.pupdevices import Motor, UltrasonicSensor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+      from pybricks.tools import wait
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+      eyes = UltrasonicSensor(Port.D)
+
+      drive_base.drive(300, 0)
+      while eyes.distance() > 100:
+          wait(5)
+      drive_base.stop()
+      wait(1000)
+      print("Stopped", eyes.distance(), "mm from the wall")
+
+  - type: text
+    markdown: |
+      The fix is **proportional speed**: drive fast when you're far away, and
+      slow down as the error (distance still to go) shrinks:
+
+      ```python
+      error = eyes.distance() - 100
+      speed = min(300, gain * error)     # never faster than 300
+      ```
+
+      `min(a, b)` gives the smaller of two numbers, so the speed is capped at
+      300 when you're far away.
+
+  - type: quiz
+    id: speed-now
+    question: With `gain = 2`, the sensor reads 160 mm and the target is 100 mm. What's the speed?
+    choices: ["120", "300", "320", "60"]
+    answer: 0
+    explain: "The error is 160 − 100 = 60, and 2 × 60 = 120. That's less than 300, so min() picks 120."
+
+  - type: challenge
+    id: smooth-parking
+    title: Smooth Parking
+    summary: Park with the sensor exactly 100 mm from the wall, fast.
+    world: parking-wall
+    time_limit: 30
+    instructions: |
+      Park so the distance sensor is **100 mm** from the wall: the yellow
+      spot is only 25 mm wide! You also have to be quick (under 12
+      seconds), so you can't just crawl the whole way.
+
+      Use proportional speed: keep updating the speed in a loop until the
+      error is tiny, then stop.
+    goals:
+      - {type: end_in_zone, zone: perfect}
+      - {type: no_collisions}
+      - {type: max_time, seconds: 12}
+    hints:
+      - "`error = eyes.distance() - 100` before the loop, then `while error > 2:`"
+      - "In the loop: `drive_base.drive(min(300, gain * error), 0)`, `wait(10)`, and measure the error again."
+      - "`gain = 2` works well."
+    starter: |
+      from pybricks.pupdevices import Motor, UltrasonicSensor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+      from pybricks.tools import wait
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+      eyes = UltrasonicSensor(Port.D)
+
+      gain = 2
+      drive_base.drive(300, 0)
+      while eyes.distance() > 100:
+          wait(5)
+      drive_base.stop()
+    solution: |
+      from pybricks.pupdevices import Motor, UltrasonicSensor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+      from pybricks.tools import wait
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+      eyes = UltrasonicSensor(Port.D)
+
+      gain = 2
+      error = eyes.distance() - 100
+      while error > 2:
+          drive_base.drive(min(300, gain * error), 0)
+          wait(10)
+          error = eyes.distance() - 100
+      drive_base.stop()

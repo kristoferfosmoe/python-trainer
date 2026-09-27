@@ -1,0 +1,103 @@
+id: your-own-commands
+title: Your Own Commands
+summary: Use def to name a group of lines and run it whenever you want.
+concepts: [def, calling functions]
+blocks:
+  - type: text
+    markdown: |
+      `print()` and `drive_base.straight()` are **functions**: named commands
+      that do a job. You can make your own with `def` ("define"):
+
+      ```python
+      def cheer():
+          print("Go team!")
+          print("Beep boop!")
+      ```
+
+      This **doesn't run** the lines yet. It teaches Python a new command
+      called `cheer`. To run it, **call** it: `cheer()`. You can call it as
+      many times as you like!
+
+      Watch the program jump into the function each time it's called.
+
+  - type: visualize
+    id: cheer
+    code: |
+      def cheer():
+          print("Go team!")
+          print("Beep boop!")
+
+      print("Match starts")
+      cheer()
+      cheer()
+
+  - type: quiz
+    id: never-called
+    check: output
+    question: What does this program print?
+    code: |
+      def hello():
+          print("hi")
+
+      print("start")
+    choices: ["start", "hi\nstart", "start\nhi"]
+    answer: 0
+    explain: "`hello` is defined but never called, so `hi` never prints. Defining isn't running!"
+
+  - type: text
+    markdown: |
+      Functions make robot code **readable** (`go_to_crane()` says what it
+      does) and **shorter** (write the moves once, use them many times).
+      FLL teams write a function for every mission.
+
+  - type: challenge
+    id: staircase
+    title: Staircase
+    summary: Walk down three steps with one function.
+    world: staircase
+    time_limit: 60
+    instructions: |
+      Go down the staircase through steps **1**, **2** and **3**. One step
+      is: drive 250 mm, turn right, drive 250 mm, turn left.
+
+      Write a function called `step` that does **one** step, then call it
+      three times. `straight()` should only appear inside your function.
+    goals:
+      - {type: visit_zones, zones: [step-1, step-2, step-3], in_order: true}
+      - {type: must_use, construct: def}
+      - {type: max_calls, name: straight, value: 2}
+    hints:
+      - "Start with `def step():` and indent the four moves under it."
+      - "Then call it: `step()` three times (or in a loop!)."
+    starter: |
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      def step():
+          drive_base.straight(250)
+          # finish the step here
+
+      step()
+    solution: |
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      def step():
+          drive_base.straight(250)
+          drive_base.turn(90)
+          drive_base.straight(250)
+          drive_base.turn(-90)
+
+      step()
+      step()
+      step()

@@ -1,0 +1,29 @@
+# Colored tiles tell the robot what to do. The tiles sit where the color
+# sensor (75 mm in front of the robot's center) is after each 200 mm move.
+# The top row is a traffic light for the first "if" lesson.
+id: color-commands
+name: Color Commands
+size: [2362, 1143]
+background: white
+grid: 100
+start: {x: 300, y: 300, heading: 0}
+shapes:
+  # Command path: green = keep going, blue = turn left, yellow = turn right, red = stop
+  - {type: rect, x: 525, y: 250, w: 100, h: 100, color: green}
+  - {type: rect, x: 725, y: 250, w: 100, h: 100, color: blue}
+  - {type: rect, x: 650, y: 525, w: 100, h: 100, color: green}
+  - {type: rect, x: 650, y: 725, w: 100, h: 100, color: yellow}
+  - {type: rect, x: 925, y: 650, w: 100, h: 100, color: green}
+  - {type: rect, x: 1125, y: 650, w: 100, h: 100, color: green}
+  - {type: rect, x: 1325, y: 650, w: 100, h: 100, color: yellow}
+  - {type: rect, x: 1250, y: 375, w: 100, h: 100, color: green}
+  - {type: rect, x: 1250, y: 175, w: 100, h: 100, color: blue}
+  - {type: rect, x: 1525, y: 250, w: 100, h: 100, color: green}
+  - {type: rect, x: 1725, y: 250, w: 100, h: 100, color: blue}
+  - {type: rect, x: 1650, y: 525, w: 100, h: 100, color: red}
+  # Traffic light row
+  - {type: rect, x: 330, y: 950, w: 90, h: 100, color: green}
+  - {type: line, points: [[1250, 920], [1250, 1080]], width: 12, color: gray}
+zones:
+  - {id: finish, label: Finish, type: circle, x: 1700, y: 500, r: 80}
+  - {id: crossing, label: Crossing, type: rect, x: 1200, y: 920, w: 250, h: 160}

@@ -1,0 +1,47 @@
+id: smooth-following
+title: Smooth Following
+summary: Steer harder the farther you are from the edge, with proportional control.
+concepts: [proportional control, error, gain]
+blocks:
+  - type: text
+    markdown: |
+      Bang-bang works, but it wiggles and it's slow. Better robots steer **a
+      little** when they're a little off, and **a lot** when they're far
+      off.
+
+      On the edge, the sensor reads about 50 (half black, half white). How
+      far the reading is from 50 is called the **error**:
+
+      ```python
+      error = line_sensor.reflection() - 50
+      drive_base.drive(150, gain * error)
+      ```
+
+      - Reading 60 → error 10 → steer right a little.
+      - Reading 90 → error 40 → steer right a lot.
+      - Reading 30 → error −20 → steer left.
+
+      The **gain** decides how strongly you steer. This is **proportional
+      control**, one of the most important ideas in robotics.
+
+  - type: visualize
+    id: errors
+    code: |
+      gain = 1.5
+      for reading in [50, 60, 90, 30]:
+          error = reading - 50
+          turn_rate = gain * error
+          print("reading", reading, "-> steer", turn_rate)
+
+  - type: quiz
+    id: too-much-gain
+    question: Your line follower zig-zags wildly from side to side. What should you try first?
+    choices:
+      - {text: "Make the gain smaller"}
+      - {text: "Make the gain bigger", why: "Bigger gain means steering even harder, so more zig-zag."}
+      - {text: "Drive faster", why: "Faster usually makes wobbles worse."}
+    answer: 0
+    explain: A gain that's too big over-steers every time. Too small, and the robot can't turn fast enough for curves. Tuning means finding the middle.
+
+  - type: challenge
+    ref: line-follower

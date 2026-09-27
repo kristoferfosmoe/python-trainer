@@ -1,0 +1,90 @@
+id: dictionaries
+title: Dictionaries
+summary: Store facts by name, like a mission's points and whether it's done.
+concepts: [dictionaries, keys, values, lists of dictionaries]
+blocks:
+  - type: text
+    markdown: |
+      A **dictionary** stores values by **name** instead of by position. Each
+      name is a **key**:
+
+      ```python
+      mission = {"name": "Crane", "points": 20}
+      print(mission["points"])      # 20
+      mission["points"] = 30        # change a value
+      mission["done"] = True        # add a new key
+      ```
+
+      Use curly brackets `{ }` to make one, and square brackets with the key
+      to look something up.
+
+  - type: visualize
+    id: mission-dict
+    code: |
+      mission = {"name": "Crane", "points": 20}
+      print(mission["name"])
+      mission["points"] = 30
+      mission["done"] = True
+      print(mission)
+
+  - type: quiz
+    id: lookup
+    check: output
+    question: What does this program print?
+    code: |
+      robot = {"wheels": 2, "sensors": 3, "motors": 4}
+      print(robot["sensors"])
+    choices: ["2", "3", "sensors", "{'sensors': 3}"]
+    answer: 1
+
+  - type: text
+    markdown: |
+      ## A list of dictionaries
+
+      A whole robot game can be a list, with one dictionary per mission.
+      Loop over it to add up the score:
+
+      ```python
+      for mission in missions:
+          if mission["done"]:
+              total = total + mission["points"]
+      ```
+
+  - type: challenge
+    id: score-sheet
+    title: Score Sheet
+    summary: Add up the points for the missions that are done.
+    instructions: |
+      Add up the points of the missions that are **done**, and print exactly:
+
+      `Total: 45`
+
+      Use a loop, so the code would still work if more missions were added.
+    goals:
+      - {type: printed, text: "Total: 45"}
+      - {type: must_use, construct: for}
+      - {type: must_use, construct: if}
+    hints:
+      - "Start with `total = 0` before the loop."
+      - "Inside the loop: `if mission[\"done\"]:` then add `mission[\"points\"]`."
+    starter: |
+      missions = [
+          {"name": "Crane", "points": 20, "done": True},
+          {"name": "Bridge", "points": 30, "done": False},
+          {"name": "Tower", "points": 25, "done": True},
+      ]
+
+      total = 0
+      print(f"Total: {total}")
+    solution: |
+      missions = [
+          {"name": "Crane", "points": 20, "done": True},
+          {"name": "Bridge", "points": 30, "done": False},
+          {"name": "Tower", "points": 25, "done": True},
+      ]
+
+      total = 0
+      for mission in missions:
+          if mission["done"]:
+              total = total + mission["points"]
+      print(f"Total: {total}")

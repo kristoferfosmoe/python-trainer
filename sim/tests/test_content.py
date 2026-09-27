@@ -93,3 +93,12 @@ def test_code_goals(robot, code, goal, passed):
 def test_max_calls_zero_label(robot):
     result = run_program("x = 1", {}, robot, {}, [{"type": "max_calls", "name": "straight", "value": 0}])
     assert result["goals"][1]["label"] == "Don't use `straight()`"
+
+
+def test_min_calls_goal(robot):
+    goal = {"type": "min_calls", "name": "pressed"}
+    result = run_program("x = 1", {}, robot, {}, [goal])
+    assert result["goals"][1]["passed"] is False
+    assert result["goals"][1]["label"] == "Use `pressed()` in your code"
+    result = run_program("from pybricks.hubs import PrimeHub\nPrimeHub().buttons.pressed()", {}, robot, {}, [goal])
+    assert result["goals"][1]["passed"] is True

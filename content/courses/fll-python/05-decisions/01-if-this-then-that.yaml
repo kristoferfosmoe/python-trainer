@@ -1,0 +1,110 @@
+id: if-this-then-that
+title: If This, Then That
+summary: Run code only when something is true.
+concepts: [if, else, comparisons, booleans]
+blocks:
+  - type: text
+    markdown: |
+      Robots need to make choices. **"If the sensor sees black, stop."**
+      Python has a command for exactly that:
+
+      ```python
+      if distance < 100:
+          print("Too close! Stop!")
+      else:
+          print("All clear")
+      ```
+
+      - The line after `if` is a **question** with a True or False answer.
+      - If it's **True**, the indented lines under `if` run.
+      - If it's **False**, the lines under `else` run instead. (`else` is
+        optional.)
+
+      Step through it and watch which lines run.
+
+  - type: visualize
+    id: too-close
+    code: |
+      distance = 120
+      if distance < 100:
+          print("Too close! Stop!")
+      else:
+          print("All clear, keep driving")
+
+      distance = 60
+      if distance < 100:
+          print("Too close! Stop!")
+      else:
+          print("All clear, keep driving")
+
+  - type: quiz
+    id: fast-or-slow
+    check: output
+    question: What does this program print?
+    code: |
+      speed = 300
+      if speed > 200:
+          print("fast")
+      else:
+          print("slow")
+    choices: ["fast", "slow", "fast\nslow"]
+    answer: 0
+    explain: "`300 > 200` is True, so only the `if` part runs."
+
+  - type: quiz
+    id: equals
+    question: Which line checks if `color` is red?
+    choices:
+      - {text: "`if color = Color.RED:`", why: "One `=` stores a value. It doesn't compare."}
+      - {text: "`if color == Color.RED:`"}
+      - {text: "`if color is red:`", why: "`red` isn't a name Python knows. Use `Color.RED`."}
+    answer: 1
+    explain: Two equals signs `==` means "is it equal?". One `=` means "store".
+
+  - type: text
+    markdown: |
+      The color sensor's `color()` gives a color like `Color.GREEN` or
+      `Color.RED`. You can compare it with `==` in an `if`.
+
+  - type: challenge
+    id: traffic-light
+    title: Traffic Light
+    summary: Only cross when the light is green.
+    world: color-commands
+    start: {x: 300, y: 1000, heading: 0}
+    time_limit: 30
+    instructions: |
+      The robot is sitting on a traffic light. Use an `if`: if the color
+      sensor sees **green**, drive 1000 mm to the **crossing**. Otherwise,
+      print `Waiting for green`.
+    goals:
+      - {type: end_in_zone, zone: crossing}
+      - {type: must_use, construct: if}
+    hints:
+      - "`if eyes.color() == Color.GREEN:`"
+      - Put `drive_base.straight(1000)` indented under the `if`.
+    starter: |
+      from pybricks.pupdevices import Motor, ColorSensor
+      from pybricks.parameters import Port, Direction, Color
+      from pybricks.robotics import DriveBase
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+      eyes = ColorSensor(Port.C)
+
+      print("The light is", eyes.color())
+    solution: |
+      from pybricks.pupdevices import Motor, ColorSensor
+      from pybricks.parameters import Port, Direction, Color
+      from pybricks.robotics import DriveBase
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+      eyes = ColorSensor(Port.C)
+
+      if eyes.color() == Color.GREEN:
+          drive_base.straight(1000)
+      else:
+          print("Waiting for green")

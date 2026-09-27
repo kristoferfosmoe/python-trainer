@@ -1,0 +1,94 @@
+id: detective-work
+title: Detective Work
+summary: Find bugs with no error message by printing values and testing one piece at a time.
+concepts: [print debugging, logic bugs, testing]
+blocks:
+  - type: text
+    markdown: |
+      The sneakiest bugs don't crash. The program runs, but the robot does
+      the **wrong thing**. Python can't tell you what's wrong, because it
+      doesn't know what you meant!
+
+      Detective tools:
+
+      1. **Print values** to see what the program really sees:
+         `print("reflection:", eyes.reflection())`.
+      2. **Test one piece at a time.** Run just the first mission, and only
+         add more when it works.
+      3. **Explain the code out loud**, line by line (to a teammate, or a
+         rubber duck 🦆). You'll often hear the bug.
+      4. Use **👣 Step through** and the **Variables** list to watch values
+         change.
+
+      This loop should count down from 3, but it prints nothing. Step
+      through it to see why.
+
+  - type: visualize
+    id: no-output
+    code: |
+      count = 3
+      while count < 0:
+          print(count)
+          count = count - 1
+      print("Done?")
+
+  - type: quiz
+    id: logic-bug
+    question: How do you fix the countdown above?
+    choices:
+      - {text: "Change `count < 0` to `count > 0`"}
+      - {text: "Change `count = 3` to `count = -3`", why: "Then it would count -3, -4, -5... forever!"}
+      - {text: "Add a `print` before the loop", why: "Printing helps you find the bug, but it doesn't fix it."}
+    answer: 0
+    explain: "`3 < 0` is False, so the loop never runs. The comparison is backwards."
+
+  - type: challenge
+    id: fix-the-line-stopper
+    title: Fix the Line Stopper
+    summary: No error message, but the robot won't drive to the line. Why?
+    world: practice-field
+    start: {x: 900, y: 830, heading: 0}
+    time_limit: 30
+    instructions: |
+      This robot should drive until it reaches the black line, and then stop.
+      There's no error message, but the robot barely moves.
+
+      Add a `print` inside or before the loop to see what the sensor reads,
+      find the bug, and fix it.
+    goals:
+      - {type: end_in_zone, zone: at-line}
+      - {type: must_use, construct: while}
+    hints:
+      - "Print `eyes.reflection()` before the loop. Is it more or less than 50?"
+      - "The loop should keep going while the sensor sees **white** (bright)."
+    starter: |
+      from pybricks.pupdevices import Motor, ColorSensor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+      from pybricks.tools import wait
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+      eyes = ColorSensor(Port.C)
+
+      drive_base.drive(150, 0)
+      while eyes.reflection() < 50:
+          wait(10)
+      drive_base.stop()
+    solution: |
+      from pybricks.pupdevices import Motor, ColorSensor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+      from pybricks.tools import wait
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+      eyes = ColorSensor(Port.C)
+
+      print("Reflection at the start:", eyes.reflection())
+      drive_base.drive(150, 0)
+      while eyes.reflection() > 50:
+          wait(10)
+      drive_base.stop()

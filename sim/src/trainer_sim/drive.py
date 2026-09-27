@@ -10,7 +10,7 @@ import math
 
 from pybricks.parameters import Stop
 
-from .motion import Commanded, Hold, Idle, Scaled, Trapezoid
+from .motion import Commanded, Hold, Scaled, Trapezoid, brake, coast
 
 HEADING_GAIN = 8.0  # 1/s, gyro heading correction
 STALL_GIVE_UP = 1.0  # seconds of being stuck before a move gives up
@@ -176,12 +176,16 @@ class DriveController:
         )
         self._take_motors()
 
-    def stop(self):
+    def stop(self, slowdown=coast):
+        """Stop driving: the robot coasts (or brakes) to a halt."""
         self.maneuver = None
         if self._owns_motors():
-            self.left.sim_motor.control = Idle()
-            self.right.sim_motor.control = Idle()
+            self.left.sim_motor.control = slowdown(self.left.sim_motor)
+            self.right.sim_motor.control = slowdown(self.right.sim_motor)
         self._commands = None
+
+    def brake(self):
+        self.stop(slowdown=brake)
 
     def done(self):
         return self.maneuver is None or self.maneuver.done
@@ -265,6 +269,7 @@ class DriveController:
             self.left.sim_motor.control = Hold(self.left.sim_motor.angle)
             self.right.sim_motor.control = Hold(self.right.sim_motor.angle)
         else:
-            self.left.sim_motor.control = Idle()
-            self.right.sim_motor.control = Idle()
+            slowdown = brake if stop is Stop.BRAKE else coast
+            self.left.sim_motor.control = slowdown(self.left.sim_motor)
+            self.right.sim_motor.control = slowdown(self.right.sim_motor)
 

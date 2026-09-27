@@ -1,0 +1,83 @@
+id: gyro-straight
+title: Straight with the Gyro
+summary: Write your own controller that uses the gyro to drive in a straight line.
+concepts: [proportional control, gyro, error correction]
+blocks:
+  - type: text
+    markdown: |
+      In the playground, `drive_base.use_gyro(True)` fixed a robot that
+      drifted. Now you'll build that yourself!
+
+      The idea is the same as line following, but the **error** comes from the
+      gyro:
+
+      ```python
+      error = hub.imu.heading() - 0      # how far we've turned off course
+      drive_base.drive(200, -gain * error)
+      ```
+
+      If the robot drifts **right**, the heading goes up (positive error), so
+      `-gain * error` steers **left**. The minus sign steers *against* the
+      drift.
+
+  - type: quiz
+    id: sign
+    question: The heading is -5 (the robot drifted left). With `drive_base.drive(200, -2 * error)`, which way does it steer?
+    choices:
+      - {text: "Right, at 10°/s"}
+      - {text: "Left, at 10°/s", why: "-2 × -5 = +10, and a positive turn rate turns right."}
+      - {text: "It doesn't steer", why: "The error isn't 0, so it steers."}
+    answer: 0
+    explain: "-2 × (-5) = +10, and a positive turn rate steers right, back toward straight."
+
+  - type: challenge
+    id: gyro-straight
+    title: Your Own Gyro Controller
+    summary: Reach the target 1600 mm away on a wobbly robot, without use_gyro.
+    world: straight-lane
+    realism: on
+    time_limit: 30
+    instructions: |
+      Real-world wobble is on: one wheel is a bit smaller, so the robot
+      curves. Drive **1600 mm** into the yellow target with a proportional
+      controller. Don't use `use_gyro()` or `straight()`: you're the
+      controller now!
+    goals:
+      - {type: end_in_zone, zone: target}
+      - {type: max_calls, name: use_gyro, value: 0}
+      - {type: max_calls, name: straight, value: 0}
+    hints:
+      - "Loop while `drive_base.distance() < 1600`."
+      - "Inside: `error = hub.imu.heading()` and `drive_base.drive(200, -gain * error)`."
+      - "Try `gain = 2`."
+    starter: |
+      from pybricks.hubs import PrimeHub
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+
+      hub = PrimeHub()
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      gain = 2
+      while drive_base.distance() < 1600:
+          drive_base.drive(200, 0)
+      drive_base.stop()
+    solution: |
+      from pybricks.hubs import PrimeHub
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+
+      hub = PrimeHub()
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      gain = 2
+      while drive_base.distance() < 1600:
+          error = hub.imu.heading()
+          drive_base.drive(200, -gain * error)
+      drive_base.stop()

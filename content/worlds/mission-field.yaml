@@ -1,0 +1,17 @@
+# A small robot-game table: home base and two missions.
+id: mission-field
+name: Mission Field
+size: [2362, 1143]
+background: white
+grid: 100
+start: {x: 200, y: 200, heading: 0}
+shapes:
+  - {type: rect, x: 0, y: 0, w: 420, h: 420, color: cyan}
+  - {type: rect, x: 930, y: 130, w: 140, h: 140, color: orange}
+  - {type: rect, x: 130, y: 830, w: 140, h: 140, color: magenta}
+zones:
+  - {id: home, label: Home, type: rect, x: 0, y: 0, w: 420, h: 420}
+  - {id: crane, label: Crane, type: circle, x: 1000, y: 200, r: 90}
+  - {id: bridge, label: Bridge, type: circle, x: 200, y: 900, r: 90}
+obstacles:
+  - {label: tower, type: rect, x: 1500, y: 500, w: 180, h: 180}

@@ -1,0 +1,16 @@
+# Black lines across a lane, spaced unevenly, for counting with a sensor.
+id: counting-lane
+name: Counting Lane
+size: [2362, 1143]
+background: white
+grid: 100
+start: {x: 200, y: 570, heading: 0}
+shapes:
+  - {type: line, points: [[0, 460], [2362, 460]], width: 6, color: gray}
+  - {type: line, points: [[0, 680], [2362, 680]], width: 6, color: gray}
+  - {type: line, points: [[400, 480], [400, 660]], width: 20, color: black}
+  - {type: line, points: [[650, 480], [650, 660]], width: 20, color: black}
+  - {type: line, points: [[900, 480], [900, 660]], width: 20, color: black}
+  - {type: line, points: [[1250, 480], [1250, 660]], width: 20, color: black}
+  - {type: line, points: [[1500, 480], [1500, 660]], width: 20, color: black}
+  - {type: rect, x: 1880, y: 480, w: 60, h: 180, color: green}

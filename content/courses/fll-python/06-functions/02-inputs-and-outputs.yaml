@@ -1,0 +1,137 @@
+id: inputs-and-outputs
+title: Inputs and Outputs
+summary: Give functions parameters, and get answers back with return.
+concepts: [parameters, arguments, return]
+blocks:
+  - type: text
+    markdown: |
+      A function can take **inputs**, called **parameters**. They go in the
+      brackets:
+
+      ```python
+      def square(size):
+          for side in range(4):
+              drive_base.straight(size)
+              drive_base.turn(90)
+
+      square(400)   # a big square
+      square(200)   # a small one
+      ```
+
+      A function can also send an answer **back** with `return`:
+
+      ```python
+      def double(n):
+          return n * 2
+      ```
+
+      `double(4)` becomes `8`, so you can print it, store it, or use it in math.
+
+  - type: visualize
+    id: double
+    code: |
+      def double(n):
+          answer = n * 2
+          return answer
+
+      x = double(4)
+      print(x)
+      print(double(10))
+
+  - type: quiz
+    id: area
+    check: output
+    question: What does this program print?
+    code: |
+      def area(width, height):
+          return width * height
+
+      print(area(3, 4))
+    choices: ["7", "12", "34", "area(3, 4)"]
+    answer: 1
+    explain: "`width` becomes 3 and `height` becomes 4, and `return` sends back 3 × 4 = 12."
+
+  - type: quiz
+    id: return-vs-print
+    question: "`n` is only a **name inside the function**. What happens if you type `print(n)` after the function, outside it?"
+    choices:
+      - {text: It prints the last value of n, why: "Parameters only exist while the function is running."}
+      - {text: "Python says `NameError`: it doesn't know `n`"}
+      - {text: It prints 0, why: "Python doesn't make up values for names it doesn't know."}
+    answer: 1
+    explain: Names made inside a function stay inside it. Use `return` to send a value out.
+
+  - type: challenge
+    id: two-squares
+    title: Two Squares
+    summary: One square function, two sizes.
+    world: squares
+    time_limit: 60
+    instructions: |
+      Drive the **big** square (400 mm sides) through the yellow dots, then
+      the **small** square (200 mm sides) through the blue dot. Both squares
+      start at the robot's start and turn right at each corner.
+
+      Write **one** function `square(size)` and call it twice with different
+      sizes.
+    goals:
+      - {type: visit_zones, zones: [big-1, big-2, big-3, small], in_order: true}
+      - {type: must_use, construct: def}
+      - {type: max_calls, name: straight, value: 1}
+    hints:
+      - "`def square(size):` then a `for` loop that drives `size` and turns 90."
+      - "Call it: `square(400)` then `square(200)`."
+    starter: |
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      def square(size):
+          print("Square with sides of", size)
+
+      square(400)
+    solution: |
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      def square(size):
+          for side in range(4):
+              drive_base.straight(size)
+              drive_base.turn(90)
+
+      square(400)
+      square(200)
+
+  - type: challenge
+    id: converter
+    title: Unit Converter
+    summary: A function that turns centimeters into millimeters.
+    instructions: |
+      Pybricks measures in millimeters, but your ruler might show
+      centimeters. Finish the function `cm_to_mm(cm)` so it **returns** the
+      same length in millimeters (1 cm = 10 mm). The program should then
+      print `25 cm is 250 mm`.
+    goals:
+      - {type: printed, text: "25 cm is 250 mm"}
+      - {type: must_use, construct: def}
+    hints:
+      - "Inside the function: `return cm * 10`"
+    starter: |
+      def cm_to_mm(cm):
+          return 0
+
+      print(f"25 cm is {cm_to_mm(25)} mm")
+    solution: |
+      def cm_to_mm(cm):
+          return cm * 10
+
+      print(f"25 cm is {cm_to_mm(25)} mm")

@@ -1,0 +1,22 @@
+# A delivery route around two buildings.
+id: delivery
+name: Delivery Route
+size: [2362, 1143]
+background: white
+grid: 100
+start: {x: 200, y: 900, heading: 0}
+shapes:
+  - {type: circle, x: 800, y: 900, r: 30, color: orange}
+  - {type: circle, x: 800, y: 500, r: 30, color: orange}
+  - {type: circle, x: 1300, y: 500, r: 30, color: orange}
+  - {type: circle, x: 1300, y: 800, r: 30, color: orange}
+  - {type: rect, x: 1740, y: 740, w: 120, h: 120, color: green}
+zones:
+  - {id: stop-a, label: A, type: circle, x: 800, y: 900, r: 70}
+  - {id: stop-b, label: B, type: circle, x: 800, y: 500, r: 70}
+  - {id: stop-c, label: C, type: circle, x: 1300, y: 500, r: 70}
+  - {id: stop-d, label: D, type: circle, x: 1300, y: 800, r: 70}
+  - {id: depot, label: Depot, type: rect, x: 1740, y: 740, w: 120, h: 120}
+obstacles:
+  - {label: shop, type: rect, x: 400, y: 450, w: 250, h: 250}
+  - {label: school, type: rect, x: 950, y: 620, w: 200, h: 350}

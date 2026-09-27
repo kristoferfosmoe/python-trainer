@@ -1,0 +1,98 @@
+id: reading-errors
+title: Reading Error Messages
+summary: Every error message tells you what went wrong and where. Learn to read them.
+concepts: [SyntaxError, NameError, TypeError, IndentationError]
+blocks:
+  - type: text
+    markdown: |
+      An error message is a **clue**, not a punishment. Python's message
+      always tells you three things:
+
+      1. **Where**: the line number.
+      2. **What kind** of problem: the error's name, like `NameError`.
+      3. **Details**: what exactly it didn't like.
+
+      | Error | Usually means |
+      |---|---|
+      | `SyntaxError` | a typo in the *shape* of the code: missing `:`, bracket or quote |
+      | `IndentationError` | lines aren't lined up correctly |
+      | `NameError` | a name is misspelled, or used before it was created |
+      | `TypeError` | the wrong kind of value, like text where a number should be |
+
+      Each program below has one bug. Run it, open **What Python said**,
+      and fix it.
+
+  - type: example
+    id: bug-name
+    expect_error: true
+    code: |
+      speed = 200
+      print("Speed is", sped)
+
+  - type: example
+    id: bug-type
+    expect_error: true
+    code: |
+      distance = "300"
+      print(distance + 50)
+
+  - type: quiz
+    id: which-fix
+    question: "Python says `NameError: name 'drive_bas' is not defined` on line 12. What's the most likely fix?"
+    choices:
+      - {text: "Fix the spelling to `drive_base`"}
+      - {text: "Add a colon at the end of line 12", why: "A missing colon would be a SyntaxError."}
+      - {text: "Put quotes around drive_bas", why: "That would make it text, which still isn't the drive base."}
+    answer: 0
+    explain: A NameError means Python doesn't know that name, and a small typo is the most common reason.
+
+  - type: challenge
+    id: bug-hunt
+    title: Bug Hunt
+    summary: Three bugs stand between this robot and the garage.
+    world: practice-field
+    time_limit: 30
+    expect_error: true
+    instructions: |
+      This program should park in the **garage** and print
+      `Parked 930 mm away`. It has **three** bugs. Run it, fix the bug
+      Python tells you about, and run it again. Repeat until it works!
+    goals:
+      - {type: end_in_zone, zone: garage}
+      - {type: printed, text: "Parked 930 mm away"}
+    hints:
+      - "Bug 1: lines starting with `def` need a colon at the end."
+      - "Bug 2: check the spelling of `garage` inside the function."
+      - "Bug 3: you can't `+` a number onto text. Try an f-string: `f\"Parked {garage} mm away\"`."
+    starter: |
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      garage = 930
+
+      def park()
+          drive_base.straight(garag)
+
+      park()
+      print("Parked " + garage + " mm away")
+    solution: |
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      garage = 930
+
+      def park():
+          drive_base.straight(garage)
+
+      park()
+      print(f"Parked {garage} mm away")

@@ -1,0 +1,4 @@
+id: proportional-control
+title: Proportional Control
+icon: 🎯
+summary: Use the error to steer and brake smoothly, with the gyro and the distance sensor.

@@ -15,7 +15,7 @@ export function ChallengeCard({ challenge, world, goals, intro }: Props) {
   const [hintsShown, setHintsShown] = useState(0);
   const text = [intro, challenge.instructions].filter(Boolean).join("\n\n");
   const instructions = useMemo(() => markdown(text), [text]);
-  const realism = challenge.realism === true || challenge.realism === "on";
+  const realism = challenge.realism !== undefined && challenge.realism !== false && challenge.realism !== "off";
   const goalRows = goals ?? previewGoals(challenge, world);
   const hints = challenge.hints ?? [];
 
@@ -33,8 +33,13 @@ export function ChallengeCard({ challenge, world, goals, intro }: Props) {
         )}
       </div>
       {realism && (
-        <p className="realism" title="Wheels slip and one wheel is slightly smaller, just like a real robot.">
+        <p className="realism" title="Wheels slip, one wheel may be slightly smaller, and sensors are a bit noisy, like a real robot.">
           🌪️ Real-world wobble is <b>on</b> for this challenge.
+        </p>
+      )}
+      {challenge.buttons && challenge.buttons.length > 0 && (
+        <p className="realism" title="Scripted button presses, like a teammate at the table.">
+          🔘 A teammate presses {challenge.buttons.map((b) => `${b.button.toLowerCase()} at ${(b.at / 1000).toFixed(1)} s`).join(", ")}.
         </p>
       )}
       {open && text && <div className="instructions markdown" dangerouslySetInnerHTML={instructions} />}
@@ -95,7 +100,13 @@ function describe(goal: Record<string, unknown>, zoneName: (id: unknown) => stri
     case "must_use":
       return `Use ${MUST_USE[goal.construct as string] ?? goal.construct}`;
     case "max_calls":
-      return `Use \`${goal.name}()\` at most ${goal.value} time${goal.value === 1 ? "" : "s"} in your code`;
+      return goal.value === 0
+        ? `Don't use \`${goal.name}()\``
+        : `Use \`${goal.name}()\` at most ${goal.value} time${goal.value === 1 ? "" : "s"} in your code`;
+    case "min_calls":
+      return `Use \`${goal.name}()\` in your code`;
+    case "uses_variable_in":
+      return `Give \`${goal.name}()\` a variable instead of a plain number`;
     case "printed":
       return `Print "${goal.text}"`;
     default:
@@ -110,4 +121,7 @@ const MUST_USE: Record<string, string> = {
   def: "a function (`def`)",
   list: "a list",
   variable: "a variable",
+  fstring: "an f-string",
+  floor_divide: "whole-number division `//`",
+  modulo: "the remainder operator `%`",
 };

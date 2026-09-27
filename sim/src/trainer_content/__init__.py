@@ -18,7 +18,7 @@ from trainer_sim.world import World
 BLOCK_TYPES = ("text", "example", "visualize", "quiz", "challenge")
 GOAL_TYPES = (
     "end_in_zone", "visit_zones", "avoid_zones", "no_collisions", "max_time",
-    "must_use", "max_calls", "uses_variable_in", "printed",
+    "must_use", "max_calls", "min_calls", "uses_variable_in", "printed",
 )
 # Console-only lessons still run in a world; the robot just sits there.
 DEFAULT_WORLD = "practice-field"
@@ -80,7 +80,7 @@ class Library:
     def load_course(self, course_dir):
         course = _load(course_dir / "course.yaml")
         course["units"] = []
-        for unit_dir in sorted(d for d in course_dir.iterdir() if d.is_dir()):
+        for unit_dir in sorted(d for d in course_dir.iterdir() if (d / "unit.yaml").exists()):
             unit = _load(unit_dir / "unit.yaml")
             unit["lessons"] = []
             for p in sorted(unit_dir.glob("*.yaml")):
@@ -107,6 +107,8 @@ def challenge_options(block):
     options = {"time_limit": block.get("time_limit", 150), "realism": block.get("realism", "off")}
     if block.get("start"):
         options["start"] = block["start"]
+    if block.get("buttons"):
+        options["buttons"] = block["buttons"]
     return options
 
 

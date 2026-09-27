@@ -1,0 +1,104 @@
+id: working-with-lists
+title: Working with Lists
+summary: Add up lists, find the biggest item, and store pairs of values.
+concepts: [lists, negative indexes, sum, max, lists of lists, unpacking]
+blocks:
+  - type: text
+    markdown: |
+      Lists can do more than hold numbers in order:
+
+      | Code | What it does |
+      |---|---|
+      | `scores[-1]` | the **last** item |
+      | `scores.append(40)` | add to the end |
+      | `len(scores)` | how many items |
+      | `sum(scores)`, `max(scores)`, `min(scores)` | add up, biggest, smallest |
+      | `40 in scores` | True if 40 is in the list |
+
+  - type: visualize
+    id: scores
+    code: |
+      scores = [20, 35, 15]
+      scores.append(40)
+      total = 0
+      for s in scores:
+          total = total + s
+      print("Total:", total)
+      print("Best:", max(scores))
+      print("Last:", scores[-1])
+
+  - type: quiz
+    id: last-item
+    check: output
+    question: What does this program print?
+    code: |
+      moves = [100, 200, 300]
+      moves.append(400)
+      print(moves[-1], len(moves))
+    choices: ["300 3", "400 4", "100 4", "400 3"]
+    answer: 1
+    explain: "`append` added 400 at the end, so the last item is 400 and there are 4 items."
+
+  - type: text
+    markdown: |
+      ## Lists inside lists
+
+      A robot route needs **two** numbers per leg: how far to drive and how
+      much to turn. Put each pair in a small list, and put the pairs in a
+      big list:
+
+      ```python
+      route = [[600, 90], [400, -90]]
+      for distance, angle in route:
+          drive_base.straight(distance)
+          drive_base.turn(angle)
+      ```
+
+      `for distance, angle in route:` **unpacks** each pair into two
+      variables. Changing the route means changing data, not code!
+
+  - type: challenge
+    id: delivery-route
+    title: Delivery Route
+    summary: Deliver to stops A, B, C and D, then park at the depot.
+    world: delivery
+    time_limit: 90
+    instructions: |
+      Drive to stops **A**, **B**, **C** and **D** and finish in the green
+      **depot**, without bumping into the shop or the school. The first two
+      legs of the route are done. Measure the rest on the grid (each square is
+      100 mm), and add them to the `route` list.
+    goals:
+      - {type: visit_zones, zones: [stop-a, stop-b, stop-c, stop-d, depot], in_order: true}
+      - {type: end_in_zone, zone: depot}
+      - {type: no_collisions}
+      - {type: max_calls, name: straight, value: 1}
+    hints:
+      - "From B to C is 500 mm to the right, then turn left to face up."
+      - "The whole route: `[[600, 90], [400, -90], [500, -90], [300, 90], [500, 0]]`"
+    starter: |
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      route = [[600, 90], [400, -90]]
+      for distance, angle in route:
+          drive_base.straight(distance)
+          drive_base.turn(angle)
+    solution: |
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      route = [[600, 90], [400, -90], [500, -90], [300, 90], [500, 0]]
+      for distance, angle in route:
+          drive_base.straight(distance)
+          drive_base.turn(angle)

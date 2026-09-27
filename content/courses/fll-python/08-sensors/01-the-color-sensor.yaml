@@ -1,0 +1,120 @@
+id: the-color-sensor
+title: The Color Sensor
+summary: Tell colors apart, measure brightness, and count lines as you drive.
+concepts: [color(), reflection(), sensor loops, state variables]
+blocks:
+  - type: text
+    markdown: |
+      The color sensor on port C looks **down** at the mat. It can tell you two
+      different things:
+
+      | Command | Gives you | Example |
+      |---|---|---|
+      | `eyes.color()` | the color's name | `Color.GREEN` |
+      | `eyes.reflection()` | how bright, from 0 to 100 | white ≈ 98, black ≈ 9 |
+
+      Use `color()` for colored markers, and `reflection()` for black lines
+      (it tells you *how much* black the sensor sees).
+
+      Run this scanner. It drives over the tiles and prints what it sees.
+
+  - type: challenge
+    id: color-scanner
+    title: Color Scanner
+    summary: Print what the sensor sees every 200 mm.
+    world: color-commands
+    starter: |
+      from pybricks.pupdevices import Motor, ColorSensor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+      eyes = ColorSensor(Port.C)
+
+      for i in range(6):
+          drive_base.straight(200)
+          print(eyes.color(), eyes.reflection())
+
+  - type: quiz
+    id: which-is-black
+    question: The robot prints these reflection readings. Which one was taken over the black line?
+    choices: ["98", "9", "52", "100"]
+    answer: 1
+    explain: Black reflects very little light, so it gives the lowest number. About 50 means the sensor is half on the line.
+
+  - type: text
+    markdown: |
+      ## Counting things
+
+      To **count** lines as you drive over them, you need to notice the
+      moment the sensor goes from white **onto** black. A variable that
+      remembers whether you were already on a line does the trick:
+
+      ```python
+      on_line = False
+      while ...:
+          dark = eyes.reflection() < 50
+          if dark and not on_line:
+              count = count + 1     # just arrived on a new line
+          on_line = dark
+      ```
+
+      Without `on_line`, you'd count the same line hundreds of times.
+
+  - type: challenge
+    id: count-the-lines
+    title: Count the Lines
+    summary: Drive down the lane and count the black lines.
+    world: counting-lane
+    time_limit: 30
+    instructions: |
+      Drive **1600 mm** down the lane (use `drive_base.distance()` to know
+      when to stop) and count the black lines you cross. At the end, print
+      the count like this: `Lines: 3` (with the real number, of course).
+    goals:
+      - {type: printed, text: "Lines: 5"}
+      - {type: must_use, construct: while}
+      - {type: must_use, construct: if}
+    hints:
+      - "`drive_base.drive(150, 0)` then `while drive_base.distance() < 1600:`"
+      - "Use the `on_line` trick from above so each line is counted once."
+      - "After the loop: `drive_base.stop()` and `print(\"Lines:\", count)`."
+    starter: |
+      from pybricks.pupdevices import Motor, ColorSensor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+      eyes = ColorSensor(Port.C)
+
+      count = 0
+      on_line = False
+      drive_base.drive(150, 0)
+      while drive_base.distance() < 1600:
+          pass
+      drive_base.stop()
+      print("Lines:", count)
+    solution: |
+      from pybricks.pupdevices import Motor, ColorSensor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+      eyes = ColorSensor(Port.C)
+
+      count = 0
+      on_line = False
+      drive_base.drive(150, 0)
+      while drive_base.distance() < 1600:
+          dark = eyes.reflection() < 50
+          if dark and not on_line:
+              count = count + 1
+          on_line = dark
+      drive_base.stop()
+      print("Lines:", count)

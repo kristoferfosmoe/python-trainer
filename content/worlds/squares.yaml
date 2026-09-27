@@ -1,0 +1,18 @@
+# A big square and a small square that share a corner.
+id: squares
+name: Two Squares
+size: [2362, 1143]
+background: white
+grid: 100
+start: {x: 300, y: 900, heading: 0}
+shapes:
+  - {type: circle, x: 700, y: 900, r: 25, color: yellow}
+  - {type: circle, x: 700, y: 500, r: 25, color: yellow}
+  - {type: circle, x: 300, y: 500, r: 25, color: yellow}
+  - {type: circle, x: 500, y: 700, r: 25, color: cyan}
+zones:
+  - {id: big-1, label: "Big 1", type: circle, x: 700, y: 900, r: 70}
+  - {id: big-2, label: "Big 2", type: circle, x: 700, y: 500, r: 70}
+  - {id: big-3, label: "Big 3", type: circle, x: 300, y: 500, r: 70}
+  - {id: small, label: Small, type: circle, x: 500, y: 700, r: 70}
+  - {id: start-corner, label: Start, type: circle, x: 300, y: 900, r: 70}

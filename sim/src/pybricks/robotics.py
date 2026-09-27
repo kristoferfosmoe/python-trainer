@@ -70,7 +70,7 @@ class DriveBase:
         self._ctl.stop()
 
     def brake(self):
-        self._ctl.stop()
+        self._ctl.brake()
 
     # --- Measuring ---------------------------------------------------------------
 

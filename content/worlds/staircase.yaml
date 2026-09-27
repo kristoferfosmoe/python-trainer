@@ -1,0 +1,15 @@
+# Three steps down, for the functions lesson.
+id: staircase
+name: Staircase
+size: [2362, 1143]
+background: white
+grid: 100
+start: {x: 200, y: 950, heading: 0}
+shapes:
+  - {type: circle, x: 450, y: 700, r: 30, color: yellow}
+  - {type: circle, x: 700, y: 450, r: 30, color: yellow}
+  - {type: circle, x: 950, y: 200, r: 30, color: yellow}
+zones:
+  - {id: step-1, label: "Step 1", type: circle, x: 450, y: 700, r: 70}
+  - {id: step-2, label: "Step 2", type: circle, x: 700, y: 450, r: 70}
+  - {id: step-3, label: "Step 3", type: circle, x: 950, y: 200, r: 70}

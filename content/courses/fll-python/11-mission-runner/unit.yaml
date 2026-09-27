@@ -1,0 +1,4 @@
+id: mission-runner
+title: Mission Runner
+icon: 🏁
+summary: Organize a whole robot game run, with a function for each mission and a button to start the next.

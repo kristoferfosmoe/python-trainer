@@ -66,7 +66,7 @@ test("wrong PINs and easy PINs get clear messages", async ({ page }) => {
 test("students never receive challenge solutions", async ({ page }) => {
   await signUp(page);
   await page.goto("/#/lesson/for-loops/3");
-  await expect(page.locator(".workspace")).toBeVisible();
+  await page.waitForFunction(() => window.__trainer?.key() === "lesson/for-loops/square-dance");
   expect(await page.evaluate(() => window.__trainer.solution())).toBe("");
 });
 

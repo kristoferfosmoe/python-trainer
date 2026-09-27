@@ -139,6 +139,16 @@ def check_goal(spec, index, world, recording, end, code, sim):
         else:
             detail = f"`{name}()` appears {count} times. Can a loop help?"
 
+    elif kind == "min_calls":
+        name, least = spec["name"], int(spec.get("value", 1))
+        label = label or f"Use `{name}()` in your code"
+        try:
+            count = len(list(_calls(ast.parse(code), name)))
+        except SyntaxError:
+            count = 0
+        passed = count >= least
+        detail = "" if passed else f"Your code needs `{name}()`."
+
     elif kind == "uses_variable_in":
         name = spec["name"]
         label = label or f"Give `{name}()` a variable instead of a plain number"

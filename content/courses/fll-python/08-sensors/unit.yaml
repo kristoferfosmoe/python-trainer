@@ -1,0 +1,4 @@
+id: sensors
+title: Sensors
+icon: 📡
+summary: Read the color sensor and the gyro, and use them to make smart moves.

@@ -1,0 +1,130 @@
+id: many-choices
+title: Many Choices
+summary: Choose between lots of options with elif, and combine questions with and, or, not.
+concepts: [elif, and, or, not, break]
+blocks:
+  - type: text
+    markdown: |
+      When there are more than two choices, add `elif` ("else if"):
+
+      ```python
+      if color == "red":
+          print("Stop")
+      elif color == "yellow":
+          print("Slow down")
+      else:
+          print("Go!")
+      ```
+
+      Python checks each question **from top to bottom** and runs only the
+      **first** one that's True. If none are True, `else` runs.
+
+  - type: visualize
+    id: traffic-words
+    code: |
+      for color in ["red", "yellow", "green"]:
+          if color == "red":
+              print("Stop")
+          elif color == "yellow":
+              print("Slow down")
+          else:
+              print("Go!")
+
+  - type: quiz
+    id: first-true
+    check: output
+    question: What does this program print?
+    code: |
+      points = 25
+      if points > 30:
+          print("gold")
+      elif points > 20:
+          print("silver")
+      elif points > 10:
+          print("bronze")
+      else:
+          print("keep trying")
+    choices: ["gold", "silver", "silver\nbronze", "bronze"]
+    answer: 1
+    explain: "`25 > 20` is the first question that's True, so only `silver` prints. Python skips the rest."
+
+  - type: text
+    markdown: |
+      ## and, or, not
+
+      - `a and b` is True when **both** are True: `if distance < 100 and speed > 0:`
+      - `a or b` is True when **either** is True: `if color == Color.RED or color == Color.BLACK:`
+      - `not a` flips True and False: `if not done:`
+
+      ## Leaving a loop with break
+
+      `break` jumps out of a loop right away. It's handy with
+      `while True:`, which would otherwise loop forever:
+
+      ```python
+      while True:
+          drive_base.straight(200)
+          if eyes.color() == Color.RED:
+              break        # leave the loop
+      print("Stopped on red")
+      ```
+
+  - type: challenge
+    id: color-commands
+    title: Color Commands
+    summary: Follow the colored tiles to the finish.
+    world: color-commands
+    time_limit: 90
+    instructions: |
+      The tiles are instructions! Drive **200 mm** at a time. After each
+      move, read the color under the sensor:
+
+      | Color | Do this |
+      |---|---|
+      | 🟩 green | keep going |
+      | 🟦 blue | turn left (`turn(-90)`) |
+      | 🟨 yellow | turn right (`turn(90)`) |
+      | 🟥 red | stop: you're at the finish! |
+    goals:
+      - {type: end_in_zone, zone: finish}
+      - {type: must_use, construct: if}
+      - {type: max_calls, name: straight, value: 1}
+    hints:
+      - "Use a loop: `while True:` with `break` when you see red."
+      - "Inside the loop: drive 200, then `color = eyes.color()`, then `if`/`elif` for red, blue and yellow."
+      - "Green needs no code at all: just keep looping."
+    starter: |
+      from pybricks.pupdevices import Motor, ColorSensor
+      from pybricks.parameters import Port, Direction, Color
+      from pybricks.robotics import DriveBase
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+      eyes = ColorSensor(Port.C)
+
+      while True:
+          drive_base.straight(200)
+          color = eyes.color()
+          print(color)
+          if color == Color.RED:
+              break
+    solution: |
+      from pybricks.pupdevices import Motor, ColorSensor
+      from pybricks.parameters import Port, Direction, Color
+      from pybricks.robotics import DriveBase
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+      eyes = ColorSensor(Port.C)
+
+      while True:
+          drive_base.straight(200)
+          color = eyes.color()
+          if color == Color.RED:
+              break
+          elif color == Color.BLUE:
+              drive_base.turn(-90)
+          elif color == Color.YELLOW:
+              drive_base.turn(90)

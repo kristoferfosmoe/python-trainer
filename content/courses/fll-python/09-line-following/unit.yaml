@@ -1,0 +1,4 @@
+id: line-following
+title: Line Following
+icon: 〰️
+summary: Follow a black line with the color sensor, first with wiggles, then smoothly.

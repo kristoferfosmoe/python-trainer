@@ -22,11 +22,13 @@ for (const [id, challenge] of playground) SOLUTIONS.set(`playground/${id}`, chal
 
 /** Each lesson's id and the (1-based) pages that have a challenge with goals. */
 export const LESSONS: { id: string; challengePages: number[] }[] = [];
+export let UNIT_COUNT = 0;
 for (const course of readdirSync(join(CONTENT, "courses"))) {
   const courseDir = join(CONTENT, "courses", course);
   for (const unit of readdirSync(courseDir).sort()) {
     const unitDir = join(courseDir, unit);
     if (!statSync(unitDir).isDirectory()) continue;
+    UNIT_COUNT++;
     for (const file of yamlFiles(unitDir).filter((f) => !f.endsWith("unit.yaml"))) {
       const lesson = read(file);
       const challengePages: number[] = [];
