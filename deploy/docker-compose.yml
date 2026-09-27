@@ -32,9 +32,44 @@ services:
     environment:
       DJANGO_ENV: production
       POSTGRES_HOST: db
+      LESSON_CHECKER_SOCKET: /run/checker/checker.sock
+    volumes:
+      - checker_socket:/run/checker
     depends_on:
       db:
         condition: service_healthy
+      checker:
+        condition: service_started
+
+  # Runs the code in lessons saved in the admin, to check them. That code is
+  # real Python, so it runs here, walled off: no network (so no database),
+  # no secrets (no env_file), a read-only disk, and limits on memory and
+  # processes. Django reaches it through a socket in a shared volume.
+  checker:
+    image: ${IMAGE_REPO:-python-trainer}/web:${IMAGE_TAG:-latest}
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: web
+    restart: unless-stopped
+    command: ["python", "-m", "trainer_content.server", "/run/checker/checker.sock"]
+    environment:
+      PYTHONPATH: /app/sim/src
+    network_mode: none
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 64
+    mem_limit: 1g
+    volumes:
+      - checker_socket:/run/checker
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.socket(socket.AF_UNIX).connect('/run/checker/checker.sock')"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
 
   caddy:
     image: ${IMAGE_REPO:-python-trainer}/caddy:${IMAGE_TAG:-latest}
@@ -58,5 +93,6 @@ services:
 
 volumes:
   pgdata:
+  checker_socket:
   caddy_data:
   caddy_config:

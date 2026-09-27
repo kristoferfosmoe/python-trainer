@@ -108,8 +108,10 @@ export function SignInPage() {
   const [secret, setSecret] = useState("");
   const form = useSubmit(async () => {
     await session.signIn(username.trim(), secret);
-    // Coaches start on their teams; students on the lessons.
-    goOnFrom("signin", { page: session.getSession().me?.kind === "adult" ? "teams" : "map" });
+    // Back to where they were if the server had signed them out; otherwise
+    // coaches start on their teams, and students on the lessons.
+    const back = session.takeReturnHash();
+    goOnFrom("signin", back ? parseRoute(back) : { page: session.getSession().me?.kind === "adult" ? "teams" : "map" });
   });
   return (
     <form className="card auth" onSubmit={form.submit}>

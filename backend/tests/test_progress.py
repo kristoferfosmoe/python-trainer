@@ -71,3 +71,35 @@ def test_guest_progress_is_imported(student, client_for):
     assert state["solved"] == ["first-drive"]
     # Code saved on the account wins over guest code.
     assert state["drafts"] == {"playground/free-drive": "server version", "playground/first-drive": "guest code"}
+
+
+def test_attempts_are_limited_per_hour(student, client_for, settings):
+    settings.ATTEMPTS_MAX_PER_HOUR = 2
+    client = client_for(student)
+    attempt = {"key": "playground/first-drive", "code": "print(1)", "passed": False}
+    assert post(client, "/api/attempts", attempt).status_code == 200
+    assert post(client, "/api/attempts", attempt).status_code == 200
+    response = post(client, "/api/attempts", attempt)
+    assert response.status_code == 429
+    assert "a lot of runs" in response.json()["detail"]
+    assert Attempt.objects.filter(user=student).count() == 2
+
+
+@pytest.mark.parametrize("progress", [
+    {"page": 10 ** 12},  # bigger than the database's integer
+    {"page": -1},
+    {"done": [f"block-{n}" for n in range(1000)]},
+])
+def test_progress_out_of_range_is_refused_not_a_crash(student, client_for, progress):
+    client = client_for(student)
+    assert put(client, "/api/progress/for-loops", progress).status_code == 422
+    assert put(client, "/api/progress/for-loops", {"page": 3}).status_code == 200
+
+
+def test_attempt_goals_are_checked(student, client_for):
+    client = client_for(student)
+    base = {"key": "playground/first-drive", "code": "print(1)", "passed": True}
+    assert post(client, "/api/attempts", {**base, "goals": [{"id": "x" * 5000, "passed": True}]}).status_code == 422
+    assert post(client, "/api/attempts", {**base, "goals": [{"id": "g", "passed": True}] * 100}).status_code == 422
+    assert post(client, "/api/attempts", {**base, "goals": [{"id": "garage", "passed": True, "extra": 1}]}).status_code == 200
+    assert Attempt.objects.get(user=student).goals == [{"id": "garage", "passed": True}]

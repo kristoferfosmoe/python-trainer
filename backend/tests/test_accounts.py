@@ -4,7 +4,7 @@ import pytest
 from django.test import Client
 from django.utils import timezone
 
-from accounts.models import User
+from accounts.models import LoginFailure, User
 from accounts.pins import pin_problem, random_pin, suggest_username, username_problem
 from teams.models import Membership
 
@@ -167,3 +167,93 @@ def test_reset_pin_admin_action(student, team):
     new_pin = next(m for m in messages if m.startswith("New PIN")).rsplit(" ", 1)[1]
     student.refresh_from_db()
     assert student.check_password(new_pin)
+
+
+ADMIN_PASSWORD = "a very long admin password"
+
+
+def admin_login(client, username, password):
+    return client.post("/admin/login/?next=/admin/", {"username": username, "password": password})
+
+
+def test_admin_sign_in_works_for_staff_only(student):
+    make_user("site_admin", kind=User.Kind.ADULT, secret=ADMIN_PASSWORD, is_staff=True)
+    client = Client()
+    response = admin_login(client, "site_admin", ADMIN_PASSWORD)
+    assert response.status_code == 302
+    assert client.get("/admin/").status_code == 200
+    kid = admin_login(Client(), "BraveOtter42", PIN)
+    assert kid.status_code == 200
+    assert "staff account" in kid.content.decode()
+
+
+def test_admin_sign_in_locks_like_the_app(settings):
+    settings.LOGIN_IP_MAX_FAILURES = 100
+    make_user("site_admin", kind=User.Kind.ADULT, secret=ADMIN_PASSWORD, is_staff=True)
+    client = Client()
+    for _ in range(settings.LOGIN_ACCOUNT_MAX_FAILURES):
+        assert admin_login(client, "site_admin", "guess guess guess").status_code == 200
+    locked = admin_login(client, "site_admin", ADMIN_PASSWORD)
+    assert locked.status_code == 200
+    assert "locked for 5 more minutes after too many wrong passwords" in locked.content.decode()
+    assert "_auth_user_id" not in client.session
+
+
+def test_admin_sign_in_counts_toward_the_computer_block(student, settings):
+    settings.LOGIN_IP_MAX_FAILURES = 2
+    client = Client()
+    for name in ["a1x", "b2y"]:
+        admin_login(client, name, "guess guess guess")
+    blocked = post(client, "/api/auth/login", {"username": "BraveOtter42", "secret": PIN})
+    assert blocked.status_code == 429
+    assert "this computer" in admin_login(client, "BraveOtter42", PIN).content.decode()
+
+
+def test_typos_followed_by_the_right_pin_dont_count_against_the_computer(student, settings):
+    # A whole school shares one address; kids mistyping their own PIN shouldn't block it.
+    settings.LOGIN_IP_MAX_FAILURES = 3
+    client = Client()
+    for _ in range(2):
+        post(client, "/api/auth/login", {"username": "BraveOtter42", "secret": "000001"})
+    assert post(client, "/api/auth/login", {"username": "BraveOtter42", "secret": PIN}).status_code == 200
+    assert not LoginFailure.objects.filter(username="braveotter42").exists()
+    make_user("QuietFox11")
+    for name in ["a1x", "b2y"]:
+        post(Client(), "/api/auth/login", {"username": name, "secret": PIN})
+    assert post(Client(), "/api/auth/login", {"username": "QuietFox11", "secret": PIN}).status_code == 200
+    # Misses that were never followed by the right PIN still count.
+    assert LoginFailure.objects.count() == 2
+
+
+def test_limits_count_ipv6_addresses_by_network():
+    from accounts.auth import limit_key
+
+    assert limit_key("2001:db8:1:2:aaaa::1") == limit_key("2001:db8:1:2:bbbb::9") == "2001:db8:1:2::"
+    assert limit_key("2001:db8:1:3::1") != limit_key("2001:db8:1:2::1")
+    assert limit_key("::ffff:10.0.0.5") == "10.0.0.5"
+    assert limit_key("10.0.0.5") == "10.0.0.5"
+    assert limit_key("not an address") == "0.0.0.0"
+
+
+def test_new_accounts_are_limited_per_computer(settings):
+    settings.SIGNUP_MAX_PER_HOUR = 2
+    for name in ["KidOne11", "KidTwo22"]:
+        assert signup(Client(), username=name).status_code == 200
+    third = signup(Client(), username="KidThree33")
+    assert third.status_code == 429
+    assert "ask your coach" in third.json()["detail"]
+    assert signup(Client(REMOTE_ADDR="10.0.0.9"), username="KidThree33").status_code == 200
+
+
+def test_wrong_team_codes_are_limited_per_computer(team, settings):
+    settings.JOIN_CODE_MAX_FAILURES = 2
+    for name in ["KidOne11", "KidTwo22"]:
+        assert signup(Client(), username=name, join_code="NOPE99").status_code == 400
+    blocked = signup(Client(), username="KidThree33", join_code=team.join_code)
+    assert blocked.status_code == 429
+    assert "wrong team codes" in blocked.json()["detail"]
+    client = Client()
+    client.force_login(make_user("KidFour44"))
+    assert post(client, "/api/teams/join", {"code": team.join_code}).status_code == 429
+    other = Client(REMOTE_ADDR="10.0.0.9")
+    assert signup(other, username="KidThree33", join_code=team.join_code).status_code == 200

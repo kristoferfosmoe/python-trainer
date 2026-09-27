@@ -11,7 +11,7 @@ from teams.models import Membership, Team
 from teams.permissions import sees_solutions
 from teams.robot import RobotError, clean_robot
 
-from .conftest import PIN, make_user, post, put
+from .conftest import COACH_PASSWORD, PIN, make_user, post, put
 
 pytestmark = pytest.mark.django_db
 
@@ -162,7 +162,14 @@ def test_new_pin_unlocks_and_replaces_the_old_one(coach, team, on_team, client_f
     client = client_for(coach)
     assert client.get(f"/api/teams/{team.id}").json()["students"][0]["locked"] is True
 
-    fresh = post(client, f"/api/teams/{team.id}/members/{on_team.username.lower()}/pin").json()
+    # Whoever has the new PIN can sign in as the student, so the coach types their password first.
+    url = f"/api/teams/{team.id}/members/{on_team.username.lower()}/pin"
+    asked = post(client, url)
+    assert asked.status_code == 403 and asked.json()["code"] == "password_needed"
+    assert post(client, "/api/auth/confirm", {"secret": "not my password"}).status_code == 400
+    assert post(client, url).status_code == 403
+    assert post(client, "/api/auth/confirm", {"secret": COACH_PASSWORD}).status_code == 200
+    fresh = post(client, url).json()
     assert fresh["username"] == on_team.username and pin_problem(fresh["pin"]) is None
     assert sign_in(on_team.username, PIN).status_code == 401
     assert sign_in(on_team.username, fresh["pin"]).status_code == 200
@@ -184,6 +191,7 @@ def test_coaches_only_change_kids_accounts(coach, mentor, team, on_team, client_
     sneaky_admin = make_user("sneaky_admin", is_staff=True)  # a "student" account with admin rights
     Membership.objects.create(user=sneaky_admin, team=team)
     client = client_for(coach)
+    assert post(client, "/api/auth/confirm", {"secret": COACH_PASSWORD}).status_code == 200
     for name in ("coach_two", "sneaky_admin"):
         assert post(client, f"/api/teams/{team.id}/members/{name}/pin").status_code == 403
         assert client.delete(f"/api/teams/{team.id}/members/{name}").status_code == 403

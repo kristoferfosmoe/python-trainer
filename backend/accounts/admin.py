@@ -1,7 +1,7 @@
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
-from .models import LoginFailure, User
+from .models import LoginFailure, RateLimitHit, User
 from .pins import random_pin
 
 
@@ -40,5 +40,17 @@ class UserAdmin(BaseUserAdmin):
 
 @admin.register(LoginFailure)
 class LoginFailureAdmin(admin.ModelAdmin):
-    list_display = ["ip", "created_at"]
-    readonly_fields = ["ip", "created_at"]
+    """Deleting a computer's rows here lifts its sign-in block early."""
+
+    list_display = ["ip", "username", "created_at"]
+    list_filter = ["ip"]
+    readonly_fields = ["ip", "username", "created_at"]
+
+
+@admin.register(RateLimitHit)
+class RateLimitHitAdmin(admin.ModelAdmin):
+    """New accounts and wrong team codes per computer. Deleting rows lifts a limit early."""
+
+    list_display = ["scope", "key", "created_at"]
+    list_filter = ["scope"]
+    readonly_fields = ["scope", "key", "created_at"]

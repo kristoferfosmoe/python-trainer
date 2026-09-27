@@ -94,3 +94,20 @@ test("a slow sign-up doesn't pull the student away from the page they opened", a
   await expect(page).toHaveURL(/#\/lesson\/hello-python\/2$/);
   await expect(page.locator(".choice").first()).toBeVisible();
 });
+
+test("a shared computer asks whether it's still you", async ({ page }) => {
+  const username = await signUp(page);
+  // Signing in just now: no question.
+  await expect(page.getByText("You're signed in as")).toHaveCount(0);
+  // Coming back later on the same computer: asked once.
+  await page.reload();
+  await expect(page.getByText("You're signed in as")).toContainText(username);
+  await page.getByRole("button", { name: "That's me" }).click();
+  await expect(page.getByText("You're signed in as")).toHaveCount(0);
+  // Someone else: switch account.
+  await page.reload();
+  await page.getByRole("button", { name: "Not you? Switch account" }).click();
+  await expect(page).toHaveURL(/#\/signin/);
+  await expect(page.locator(".account-chip")).toHaveCount(0);
+});
+

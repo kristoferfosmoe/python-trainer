@@ -41,7 +41,7 @@ jobs:
       name: production
       url: ${{ vars.SITE_URL }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           fetch-depth: 0
 
@@ -60,7 +60,7 @@ jobs:
       - name: Show who GitHub says this job is (AWS checks this)
         continue-on-error: true
         run: python3 deploy/aws/github-identity.py
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
@@ -69,6 +69,7 @@ jobs:
         env:
           INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
           VERSION: ${{ steps.version.outputs.version }}
+          IMAGE_REPO: ${{ vars.IMAGE_REPO }} # names the stack's deploy document
         run: deploy/aws/ssm-deploy.sh
 
       - name: Check the site answers with the new version

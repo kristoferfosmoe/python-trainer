@@ -432,6 +432,27 @@ input:focus-visible {
   flex-wrap: wrap;
 }
 
+.feedback.welcome-back {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.welcome-back .spacer {
+  flex: 1;
+}
+
+.password-check {
+  border: 1px solid var(--warning-border);
+  background: var(--warning-soft);
+  border-radius: var(--radius);
+  padding: 4px 16px 12px;
+}
+
 .feedback-title {
   font-weight: 700;
   color: var(--danger);

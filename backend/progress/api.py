@@ -1,11 +1,15 @@
 """A signed-in student's progress, saved code and challenge attempts."""
 
 import re
+from datetime import timedelta
 
+from django.conf import settings
 from django.db import transaction
+from django.utils import timezone
 from ninja import Router, Schema
 from ninja.errors import HttpError
 from ninja.security import django_auth
+from pydantic import Field
 
 from curriculum.models import Lesson
 
@@ -44,9 +48,15 @@ def state_for(user):
     return {"lessons": lessons, "solved": solved, "drafts": drafts}
 
 
+# Far beyond any real lesson; bigger numbers would also overflow the database.
+MAX_PAGE = 1000
+MAX_DONE = 200
+MAX_GOALS = 20
+
+
 class ProgressIn(Schema):
-    page: int = 0
-    done: list[str] = []
+    page: int = Field(0, ge=0, le=MAX_PAGE)
+    done: list[str] = Field(default_factory=list, max_length=MAX_DONE)
     finished: bool = False
 
 
@@ -87,11 +97,16 @@ def save_draft(request, data: DraftIn):
     return {"ok": True}
 
 
+class GoalIn(Schema):
+    id: str = Field(max_length=100)
+    passed: bool
+
+
 class AttemptIn(Schema):
     key: str
     code: str
     passed: bool
-    goals: list[dict] = []
+    goals: list[GoalIn] = Field(default_factory=list, max_length=MAX_GOALS)
     sim_version: str = ""
     lesson_id: str | None = None
     block_id: str | None = None
@@ -100,12 +115,16 @@ class AttemptIn(Schema):
 @router.post("/attempts")
 def record_attempt(request, data: AttemptIn):
     key = _check_key(data.key)
+    hour_ago = timezone.now() - timedelta(hours=1)
+    if Attempt.objects.filter(user=request.user, created_at__gte=hour_ago).count() >= settings.ATTEMPTS_MAX_PER_HOUR:
+        # Far more runs than anyone makes by hand; don't let a script fill the database.
+        raise HttpError(429, "That's a lot of runs! New ones will be saved again in a few minutes.")
     lesson = Lesson.objects.filter(slug=data.lesson_id).first() if data.lesson_id else None
     with transaction.atomic():
         Attempt.objects.create(
             user=request.user, key=key, lesson=lesson, block_id=(data.block_id or "")[:100],
             lesson_version=lesson.version if lesson else None, code=_check_code(data.code),
-            passed=data.passed, goals=data.goals[:20], sim_version=data.sim_version[:20],
+            passed=data.passed, goals=[goal.model_dump() for goal in data.goals], sim_version=data.sim_version[:20],
         )
         if data.passed and lesson and data.block_id:
             _merge_progress(request.user, lesson.slug, ProgressIn(done=[data.block_id]))

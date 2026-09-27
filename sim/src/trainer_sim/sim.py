@@ -57,6 +57,9 @@ class Simulation:
         # program picks another stop button (hub.system.set_stop_button).
         self.stop_buttons = frozenset({Button.CENTER})
         self.program_running = False
+        # Set once the simulator stops the program (time's up, too many
+        # steps, the stop button), so a bare `except:` can't carry on.
+        self.stopping = None
 
         self.now = 0.0  # virtual time in ms
         self.phys_t = 0.0  # time of the last physics tick
@@ -90,9 +93,22 @@ class Simulation:
 
     # --- Clock -------------------------------------------------------------------
 
+    def stop(self, exc):
+        """End the student's program with `exc` (a SimStop)."""
+        self.stopping = exc
+        raise exc
+
+    def raise_if_stopped(self):
+        """Runs first in every `except` block of the student's code (see
+        runner._GuardExceptBlocks). Python turns tracing off when the tracer
+        raises, so a stop caught by a bare `except:` would otherwise be lost
+        and a loop around it would never end."""
+        if self.stopping is not None:
+            raise self.stopping
+
     def check_time(self):
         if self.now >= self.time_limit_ms:
-            raise TimeUp()
+            self.stop(TimeUp())
 
     def advance(self, ms):
         """Let `ms` milliseconds of robot time pass."""
@@ -115,7 +131,7 @@ class Simulation:
         """Called before every line of student code runs."""
         self.lines_executed += 1
         if self.lines_executed > self.max_lines:
-            raise StepLimit()
+            self.stop(StepLimit())
         self.current_line = frame.f_lineno
         self.current_frame = frame
         if frame.f_code.co_name == "<module>":
@@ -142,7 +158,7 @@ class Simulation:
         if self.program_running and self.button_presses and self.stop_buttons:
             if self.stop_buttons <= self.buttons_at(self.phys_t):
                 self.now = max(self.now, self.phys_t)
-                raise StopButtonPressed(self.stop_buttons)
+                self.stop(StopButtonPressed(self.stop_buttons))
 
     def _wheel_travel(self, port):
         motor = self.motors[port]

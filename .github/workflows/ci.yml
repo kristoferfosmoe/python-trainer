@@ -21,8 +21,8 @@ jobs:
         # 3.14 matches Pyodide in the browser; 3.11 is the oldest supported.
         python: ["3.11", "3.14"]
     steps:
-      - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
       - name: Run tests (includes checking every lesson in content/)
         working-directory: sim
         run: uv run --python ${{ matrix.python }} pytest -q
@@ -41,8 +41,8 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U trainer" --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
-      - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
       - name: Run tests
         working-directory: backend
         env:
@@ -58,9 +58,9 @@ jobs:
     name: Web app and browser tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@v6
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 22
           cache: npm
@@ -86,7 +86,7 @@ jobs:
     name: Docker images
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - name: Build the web and caddy images
         run: |
           docker build -f deploy/Dockerfile --target web -t python-trainer-web .
@@ -101,15 +101,15 @@ jobs:
       contents: read
       id-token: write # to sign in to AWS
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - name: Show who GitHub says this job is (AWS checks this)
         continue-on-error: true
         run: python3 deploy/aws/github-identity.py
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
-      - uses: aws-actions/amazon-ecr-login@v2
+      - uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
       - name: Build and push the web and caddy images for this commit
         env:
           IMAGE_REPO: ${{ vars.IMAGE_REPO }}

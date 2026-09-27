@@ -30,7 +30,7 @@ Next up: an AI tutor and a friendlier lesson editor. See
 | `backend/` | Django + Django Ninja: sign-up and sign-in, teams and join codes, lessons served from the database, progress and saved code, and the admin where teachers edit lessons. |
 | `frontend/` | The web app: React + TypeScript + Vite. It has the course map, the lesson player, the step-by-step visualizer, quizzes, the CodeMirror editor, the mat renderer and playback. |
 | `content/` | The course (`courses/`), the playground challenges, the practice mats (worlds) and the robot, all as YAML files. They're imported into the database. |
-| `deploy/` | Docker images, Docker Compose (Caddy + Django + PostgreSQL), the deploy and backup scripts, and `aws/`: the CloudFormation stack for AWS. |
+| `deploy/` | Docker images, Docker Compose (Caddy + Django + the lesson checker + PostgreSQL), the deploy and backup scripts, and `aws/`: the CloudFormation stack for AWS. |
 | `docs/` | Architecture, decisions and the deployment guide. |
 
 ## Run it locally
@@ -84,7 +84,11 @@ Sign in with your coach account and open **👥 Teams**:
   they sign up (or on their account page).
 - **Or make the accounts yourself**: type one nickname per line (first names
   or initials, no last names) and print the sign-in cards. PINs are shown
-  only once, but you can make a new PIN for anyone at any time.
+  only once, but you can make a new PIN for anyone at any time (you'll type
+  your password first).
+- **Shared computers**: coaches are signed out after 2 hours without use.
+  Anyone who opens the app still signed in from an earlier visit is asked
+  "Not you?".
 - **See progress**: a row per student and a column per unit. Click a student
   to see their lessons and the code for every challenge they've tried.
 - **Mentors**: make an older student a mentor. Mentors can see everyone's
@@ -99,7 +103,8 @@ Sign in with your coach account and open **👥 Teams**:
 There are two ways:
 
 - **In the admin** (`/admin/` → Lessons), no git needed. Saving checks the
-  lesson first.
+  lesson first. On the server, lesson code runs in its own walled-off
+  `checker` container, never next to the database.
 - **As files** in `content/courses/fll-python/<unit>/<lesson>.yaml`. They're
   loaded with `import_content`, which runs on every deploy. Units and lessons
   are ordered by file name.

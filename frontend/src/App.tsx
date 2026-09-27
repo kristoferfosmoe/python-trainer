@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { loadCatalog } from "./content";
-import { useRoute } from "./router";
-import { initSession, usesTeamPages, useSession } from "./session";
+import { navigate, useRoute } from "./router";
+import { dismissRestored, initSession, signOut, usesTeamPages, useSession, type Me } from "./session";
 import { useRunnerStatus } from "./sim/instance";
 import { AccountPage, SignInPage, SignUpPage } from "./pages/AuthPages";
 import { CourseMap } from "./pages/CourseMap";
@@ -37,10 +37,14 @@ export default function App() {
 function Shell() {
   const route = useRoute();
   const status = useRunnerStatus();
-  const { me, unsaved } = useSession();
+  const { me, unsaved, signedOut, restored } = useSession();
 
+  const firstRoute = useRef(true);
   useEffect(() => {
     window.scrollTo(0, 0);
+    // The "Not you?" note is for the first page; moving on means it's you.
+    if (!firstRoute.current) dismissRestored();
+    firstRoute.current = false;
   }, [route]);
 
   const inPlayground = route.page === "playground";
@@ -65,10 +69,16 @@ function Shell() {
             </a>
           )}
         </nav>
-        {unsaved && (
-          <span className="status status-broken" role="status" title="We'll keep trying to save your work.">
-            ⚠ Not saved yet
-          </span>
+        {signedOut ? (
+          <a className="status status-broken" role="status" href="#/signin" title="Your work is kept until you sign in again.">
+            ⚠ Signed out: sign in again to save your work
+          </a>
+        ) : (
+          unsaved && (
+            <span className="status status-broken" role="status" title="We'll keep trying to save your work.">
+              ⚠ Not saved yet
+            </span>
+          )
         )}
         <span className={`status status-${status}`} role="status">
           {status === "loading" && "Starting Python…"}
@@ -85,6 +95,7 @@ function Shell() {
         )}
       </header>
       <main>
+        {me && restored && <NotYou me={me} />}
         {route.page === "map" && <CourseMap />}
         {route.page === "lesson" && <LessonPage lessonId={route.lessonId} pageNumber={route.pageNumber} />}
         {route.page === "playground" && <PlaygroundPage challengeId={route.challengeId} />}
@@ -95,6 +106,28 @@ function Shell() {
         {route.page === "team" && <TeamPage teamId={route.teamId} />}
         {route.page === "member" && <MemberPage teamId={route.teamId} username={route.username} />}
       </main>
+    </div>
+  );
+}
+
+/** On a shared computer, the last person may still be signed in. */
+function NotYou({ me }: { me: Me }) {
+  return (
+    <div className="feedback welcome-back" role="status">
+      <span>
+        👋 You're signed in as <span aria-hidden>{me.avatar}</span> <b>{me.display_name}</b>.
+      </span>
+      <span className="spacer" />
+      <button
+        className="secondary"
+        onClick={async () => {
+          await signOut();
+          navigate({ page: "signin" });
+        }}
+      >
+        Not you? Switch account
+      </button>
+      <button className="secondary" onClick={dismissRestored}>That's me</button>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import os
 import shutil
+import threading
 
 import pytest
 import yaml
@@ -11,6 +12,8 @@ from curriculum import library
 from curriculum.admin import LessonForm, WorldForm
 from curriculum.models import Course, Lesson, PlaygroundChallenge, Unit, World
 from teams.models import Membership
+from trainer_content import sandbox
+from trainer_content.server import serve
 
 from .conftest import make_user
 
@@ -169,13 +172,55 @@ blocks:
 def test_checker_killed_by_its_cpu_limit_took_too_long(monkeypatch):
     # The CPU limit is only a backstop, but if it stops the checker first
     # the admin should still hear "too long", not "crashed".
-    def tight_limit():
-        import resource
-        resource.setrlimit(resource.RLIMIT_CPU, (1, 1))
+    def tight_limit(seconds):
+        def apply():
+            import resource
+            resource.setrlimit(resource.RLIMIT_CPU, (1, 1))
+        return apply
 
-    monkeypatch.setattr(library, "_limit_resources", tight_limit)
+    monkeypatch.setattr(sandbox, "_limits", tight_limit)
     lesson = {"slug": "spin", "blocks": [{"type": "example", "code": "total = sum(range(10 ** 12))"}]}
     assert library.check_lesson(lesson) == [library.TOO_LONG]
+
+
+@pytest.fixture
+def checker(tmp_path, settings):
+    """The checker service on a socket, as in production."""
+    path = str(tmp_path / "checker.sock")
+    server = serve(path)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    settings.LESSON_CHECKER_SOCKET = path
+    yield path
+    server.shutdown()
+    server.server_close()
+
+
+def test_lessons_are_checked_by_the_checker_service(checker):
+    good = lesson_form("blocks: [{type: example, code: 'print(1)'}]")
+    assert good.is_valid(), good.errors
+    bad = lesson_form("blocks: [{type: example, code: 'print(1'}]")
+    assert not bad.is_valid()
+    assert "SyntaxError" in " ".join(bad.non_field_errors())
+
+
+def test_the_checker_service_stops_lessons_that_never_end(checker, settings):
+    settings.LESSON_CHECK_TIMEOUT = 2
+    lesson = {"slug": "spin", "blocks": [{"type": "example", "code": "total = sum(range(10 ** 12))"}]}
+    assert library.check_lesson(lesson) == [library.TOO_LONG]
+
+
+def test_lessons_cant_be_saved_when_the_checker_is_down(tmp_path, settings):
+    settings.LESSON_CHECKER_SOCKET = str(tmp_path / "nobody-home.sock")
+    form = lesson_form("blocks: [{type: example, code: 'print(1)'}]")
+    assert not form.is_valid()
+    assert "isn't running" in " ".join(form.non_field_errors())
+
+
+def test_production_never_checks_lessons_inside_the_web_server(settings):
+    settings.PRODUCTION = True
+    settings.LESSON_CHECKER_SOCKET = ""
+    assert library.check_lesson({"slug": "x", "blocks": [{"type": "text", "markdown": "Hi"}]}) == [library.NO_CHECKER]
 
 
 def test_admin_world_form_checks_the_world():

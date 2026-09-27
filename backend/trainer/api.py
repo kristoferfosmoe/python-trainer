@@ -2,6 +2,7 @@ from django.middleware.csrf import get_token
 from ninja import NinjaAPI
 
 from accounts.api import router as auth_router
+from accounts.sessions import PasswordNeeded
 from curriculum.api import router as content_router
 from progress.api import router as progress_router
 from teams.api import router as teams_router
@@ -11,6 +12,14 @@ api.add_router("/auth", auth_router)
 api.add_router("/teams", teams_router)
 api.add_router("", content_router)
 api.add_router("", progress_router)
+
+
+@api.exception_handler(PasswordNeeded)
+def password_needed(request, exc):
+    """The web app asks for the password, then tries again."""
+    return api.create_response(
+        request, {"detail": "Please type your password again first.", "code": "password_needed"}, status=403,
+    )
 
 
 @api.get("/csrf", tags=["auth"])

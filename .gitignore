@@ -20,3 +20,6 @@ backend/db.sqlite3
 backend/staticfiles/
 *.sqlite3
 .env
+
+# Deploy: the server's secrets (see deploy/.env.example)
+deploy/.env

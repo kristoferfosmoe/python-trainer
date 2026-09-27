@@ -19,6 +19,7 @@ from ninja.security import django_auth
 from accounts.api import MeResponse, find_team, me_data
 from accounts.models import AVATARS, User
 from accounts.pins import random_pin, suggest_username, username_problem
+from accounts.sessions import require_recent_password
 from curriculum.models import Lesson, PlaygroundChallenge
 from progress.models import Attempt, CodeDraft, LessonProgress
 
@@ -140,7 +141,7 @@ class JoinIn(Schema):
 
 @router.post("/join", response=MeResponse)
 def join(request, data: JoinIn):
-    team = find_team(data.code)
+    team = find_team(request, data.code)
     Membership.objects.get_or_create(user=request.user, team=team, defaults={"role": STUDENT})
     return {"user": me_data(request.user)}
 
@@ -355,9 +356,12 @@ def member_detail(request, team_id: int, username: str):
 
 @router.post("/{team_id}/members/{username}/pin")
 def new_pin(request, team_id: int, username: str):
-    """A new PIN for a student who forgot theirs. It also unlocks the account."""
+    """A new PIN for a student who forgot theirs. It also unlocks the account.
+    Whoever has the PIN can sign in as the student, so the coach types their
+    password again first (on a shared computer, it might not be them)."""
     team = _team(request, team_id, manage=True)
     user = _kid(_member(team, username)).user
+    require_recent_password(request)
     pin = random_pin()
     user.set_password(pin)
     user.failed_logins = 0

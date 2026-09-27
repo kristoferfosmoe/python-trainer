@@ -78,7 +78,8 @@ already has the AWS CLI and git.
 | `InstanceType=t3.micro` | `t3.small` | `t3.small` (2 GB, about $15/month) is plenty for a few teams. `t3.micro` (1 GB, about $8) works for a handful of students. |
 | `HostedZoneId=Z0123…` | none | If your domain's DNS is in Route 53, the stack adds the DNS record for you (skip step 2). |
 | `GitHubOidcProviderArn=arn:aws:iam::<account>:oidc-provider/token.actions.githubusercontent.com` | none | Only if the stack fails with *"Provider with url https://token.actions.githubusercontent.com already exists"*: your account already trusts GitHub, so reuse that. |
-| `GitHubRepository=you/python-trainer` | `kristoferfosmoe/python-trainer` | If you deploy from a fork. |
+| `GitHubRepository=you/python-trainer` | `kristoferfosmoe/python-trainer` | If you deploy from a fork. Also set the next two. |
+| `GitHubOwnerId=…` `GitHubRepositoryId=…` | this repository's | The fork's ID numbers, which never change (names can be given up and taken by someone else): `curl -s https://api.github.com/repos/you/python-trainer \| jq .owner.id,.id` |
 
 The server sets itself up in the background for about 5 more minutes:
 Docker, the AWS CLI, a settings file with new random secrets, and nightly
@@ -203,6 +204,7 @@ cd /opt/python-trainer/deploy
 sudo docker compose ps                    # what's running
 sudo docker compose logs -f web           # Django's log (Ctrl+C to stop)
 sudo docker compose logs -f caddy         # HTTPS and web server log
+sudo docker compose logs -f checker       # the lesson checker (admin lesson saves)
 cat /var/log/python-trainer-deploys.log   # deploy history
 sudo ./manage.sh import_content           # reload the lessons now
 ```
@@ -237,6 +239,18 @@ sudo docker compose restart web
 
   Settings you leave out keep their values. The server restarts, which takes
   a minute.
+- **When the template changes** (a newer `deploy/aws/python-trainer.yml`),
+  update the stack in CloudShell. It doesn't touch the server unless the
+  change says so:
+
+  ```bash
+  cd python-trainer && git pull
+  aws cloudformation deploy --stack-name python-trainer \
+    --template-file deploy/aws/python-trainer.yml --capabilities CAPABILITY_IAM
+  ```
+
+  Stacks made before the deploy document existed should do this once: until
+  then, deploys still work the old way, with a warning in the *Deploy* job.
 - ⚠️ **Don't re-run the command from step 1 later.** It looks up the newest
   Ubuntu image, and a new image (like a new disk size or SSH key) makes
   CloudFormation build a **new, empty server** and move the site to it.
@@ -268,8 +282,11 @@ sudo docker compose restart web
 | Deploy: *"didn't come up"* and rolled back | The job's output shows the new version's logs. The previous version is running. |
 | Deploy succeeded, but *"doesn't answer with"* the new version | DNS doesn't point at the server yet, or HTTPS couldn't get a certificate: `sudo docker compose logs caddy`. |
 | The *Push images* and *Deploy* jobs are skipped | `DEPLOY_TO_AWS` isn't `true`, or it wasn't a push to `main`. |
-| GitHub: *"Not authorized to perform sts:AssumeRoleWithWebIdentity"* | AWS didn't accept who GitHub says the job is. The step *Show who GitHub says this job is* prints it: its `sub` must be `repo:<owner>/<repo>:ref:refs/heads/main` (or `…:environment:production` for *Deploy*; GitHub may add ID numbers, like `<owner>@123/<repo>@456`, which the stack accepts), matching the stack's `GitHubRepository` and `GitHubBranch`. Also check `AWS_DEPLOY_ROLE_ARN`. |
+| GitHub: *"Not authorized to perform sts:AssumeRoleWithWebIdentity"* | AWS didn't accept who GitHub says the job is. The step *Show who GitHub says this job is* prints it: its `sub` must be `repo:<owner>@<owner id>/<repo>@<repo id>:ref:refs/heads/main` (or `…:environment:production` for *Deploy*), matching the stack's `GitHubRepository`, `GitHubOwnerId`, `GitHubRepositoryId` and `GitHubBranch`. If GitHub leaves out the ID numbers (`repo:<owner>/<repo>:…`), set `GitHubOwnerId` and `GitHubRepositoryId` to empty to accept names. Also check `AWS_DEPLOY_ROLE_ARN`. |
+| Deploy: *"isn't on the main branch, so it can't be deployed"* | Only commits on `main` can be deployed (so only reviewed, merged code runs on the server). Merge it first. |
+| Deploy: warning *"The AWS stack has no python-trainer-deploy document yet"* | Update the stack (see *Changing the server*). |
 | "Bad Request (400)" in the browser | The domain doesn't match `DJANGO_ALLOWED_HOSTS` in `/opt/python-trainer/deploy/.env`. Fix it and run `sudo docker compose up -d`. |
+| Admin: *"The lesson checker isn't running"* when saving a lesson | `sudo docker compose ps checker` and `sudo docker compose logs checker`; `sudo docker compose up -d` starts it again. |
 | A student is locked out | Wait 5 minutes, or their coach unlocks them on the student's page. |
 | Python never starts in the browser | Some school networks block WebAssembly. Try another network and check the browser console. |
 
@@ -279,12 +296,25 @@ sudo docker compose restart web
   AWS sign-in and is logged. (For SSH anyway, set `SshKeyName` and
   `SshAllowedCidr`.)
 - **GitHub holds no AWS keys.** Its role can only be used from `main` or the
-  `production` environment, and can only push to these two image
-  repositories and run commands on this one server.
+  `production` environment of this exact repository (by its ID numbers, not
+  just its name). It can push to the two image repositories, and on the
+  server it can only run the stack's deploy document: deploy one commit
+  that is on `main`. It can't run any other command.
+- **Actions are pinned to commits** in the workflows, since a tag like `v5`
+  can be moved to other code. Dependabot opens one pull request a month to
+  update them.
 - **Secrets are made on the server** (`/opt/python-trainer/deploy/.env`,
   readable only by root) and never leave it.
 - The containers can't reach the server's AWS credentials (IMDSv2 with a
   hop limit of 1). The disk and the backups are encrypted.
+- **Lesson code from the admin runs in the `checker` container**, which has
+  no network, no secrets and a read-only disk. So a staff account that can
+  edit lessons can't use lesson code to reach the database or the secret key.
+- **The admin's sign-in** (`/admin/login/`) has the same lockouts as the
+  app's, so it isn't an easier place to guess passwords.
+- **Coaches and admins are signed out** after 2 hours without use and 12
+  hours after signing in (students stay signed in for a month), and coaches
+  type their password again before making a student a new PIN.
 - Ubuntu installs security updates by itself (`unattended-upgrades`). Each
   deploy builds on the newest Python and Caddy base images, and ECR scans
   every image (see the findings in the ECR console). The PostgreSQL image is
@@ -292,7 +322,10 @@ sudo docker compose restart web
 - Students have no email or real name on file. Tell them not to use their
   real name as a username.
 - Sign-in protection: an account locks for 5 minutes after 5 wrong PINs, and
-  a computer is blocked for 15 minutes after 30 failed sign-ins.
+  a computer is blocked for 15 minutes after 30 failed sign-ins (typos
+  followed by the right PIN don't count). New accounts and wrong team codes
+  are limited per computer too. To lift a block early, delete the rows in
+  the admin under Accounts → Login failures or Rate limit hits.
 
 ---
 

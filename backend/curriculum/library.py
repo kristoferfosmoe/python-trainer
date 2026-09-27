@@ -2,11 +2,10 @@
 checks that run in a separate process."""
 
 import json
-import os
-import subprocess
-import sys
+import socket
 
 from django.conf import settings
+from trainer_content.sandbox import TOO_LONG, run_check
 
 from .models import PlaygroundChallenge, Robot, World
 
@@ -19,50 +18,53 @@ class DatabaseLibrary:
         self.playground_by_id = {c.slug: c.spec for c in PlaygroundChallenge.objects.all()}
 
 
-TOO_LONG = "Checking the lesson took too long. Is there a loop that never ends?"
-
-
-def _limit_resources():
-    import resource
-
-    # A backstop: the wall-clock timeout in check_lesson() should stop the
-    # checker first. If the CPU limit were the same, the two would race.
-    seconds = settings.LESSON_CHECK_TIMEOUT + 5
-    resource.setrlimit(resource.RLIMIT_CPU, (seconds, seconds))
-    memory = 1536 * 1024 * 1024
-    resource.setrlimit(resource.RLIMIT_AS, (memory, memory))
+NO_CHECKER = "The lesson checker isn't running, so the lesson couldn't be checked. Try again in a minute."
+MAX_ANSWER = 1024 * 1024
 
 
 def check_lesson(lesson, library=None, run=True):
     """Problems with a lesson (a list of strings; empty means it's fine).
 
-    Lesson code written in the admin runs in a separate process with a time
-    and memory limit, never inside the web server.
+    Lesson code written in the admin never runs inside the web server. In
+    production it runs in the checker container, which has no network, no
+    secrets and a read-only disk (trainer_content.server). Without one, as
+    in development, it runs in a limited process on this computer.
     """
     library = library or DatabaseLibrary()
-    payload = json.dumps({
+    request = {
         "lesson": lesson,
         "robot": library.robot,
         "worlds": library.worlds,
         "playground": library.playground_by_id,
         "run": run,
-    })
-    env = {"PYTHONPATH": str(settings.SIM_SRC), "PATH": os.environ.get("PATH", ""), "PYTHONIOENCODING": "utf-8"}
+    }
+    if settings.LESSON_CHECKER_SOCKET:
+        return _ask_checker(request)
+    if settings.PRODUCTION:
+        # Never run lesson code next to the site's secrets.
+        return [NO_CHECKER]
+    return run_check(json.dumps(request), settings.LESSON_CHECK_TIMEOUT)
+
+
+def _ask_checker(request):
+    timeout = settings.LESSON_CHECK_TIMEOUT
     try:
-        result = subprocess.run(
-            [sys.executable, "-m", "trainer_content.check"],
-            input=payload,
-            capture_output=True,
-            text=True,
-            timeout=settings.LESSON_CHECK_TIMEOUT,
-            env=env,
-            preexec_fn=_limit_resources if os.name == "posix" else None,
-        )
-    except subprocess.TimeoutExpired:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as conn:
+            # The checker stops the lesson at `timeout`; allow for waiting in line.
+            conn.settimeout(timeout * 2 + 15)
+            conn.connect(settings.LESSON_CHECKER_SOCKET)
+            conn.sendall(json.dumps({**request, "timeout": timeout}).encode())
+            conn.shutdown(socket.SHUT_WR)
+            answer = b""
+            while chunk := conn.recv(65536):
+                answer += chunk
+                if len(answer) > MAX_ANSWER:
+                    return ["The lesson checker's answer was too big."]
+    except TimeoutError:
         return [TOO_LONG]
-    if result.returncode < 0:
-        # Killed by a signal: the CPU limit above.
-        return [TOO_LONG]
-    if result.returncode != 0:
-        return [f"The lesson checker crashed: {result.stderr.strip()[-600:]}"]
-    return json.loads(result.stdout)
+    except OSError:
+        return [NO_CHECKER]
+    try:
+        return list(json.loads(answer)["problems"])
+    except (ValueError, KeyError, TypeError):
+        return [NO_CHECKER]

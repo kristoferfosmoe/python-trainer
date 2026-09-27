@@ -413,9 +413,17 @@ backend):
 - **Web editing**: in the Django admin (Curriculum → Lessons), a lesson's
   blocks are edited as YAML in a large text box. Multi-line text is shown as
   readable `|` blocks.
-  - **Saving runs the full checker in a separate process**, with a time and
-    memory limit, so lesson code never runs inside the web server. A lesson
-    with problems isn't saved, and the problems are listed.
+  - **Saving runs the full checker**, and a lesson with problems isn't
+    saved (the problems are listed). Lesson code is real Python, and the
+    simulator's import rules don't stop a determined author, so it never
+    runs inside the web server. In production it runs in the `checker`
+    container (`trainer_content.server`): no network, no secrets, a
+    read-only disk, and limits on memory and processes. Django reaches it
+    through a Unix socket in a shared volume. Each check is a process of its
+    own with a time limit, a memory limit, no new processes and no file
+    writes (`trainer_content.sandbox`). If the checker isn't running,
+    lessons can't be saved. In development the check runs in that limited
+    process on your computer.
   - Worlds, the robot and playground challenges have YAML editors too.
   - "Open ↗" previews the lesson on the site. Staff can see unpublished
     lessons.
@@ -573,7 +581,14 @@ practice quizzes.
     `localStorage`.
   - **Signed-in students** get them from `/api/me/state`. Changes show
     instantly and are sent to the server in the background (drafts after an
-    800 ms pause). A "⚠ Not saved yet" pill appears if saving fails.
+    800 ms pause). A "⚠ Not saved yet" pill appears if saving fails, and
+    the save is tried again (after 5 seconds, then less often, up to once a
+    minute, and as soon as the connection comes back); only the newest
+    version of a draft or a lesson's progress is resent. If the server has
+    signed the student out (a new PIN, or the session ran out), the pill
+    says to sign in again, and the waiting work is sent when that same
+    student signs in (never as someone else). Leaving the page with work
+    still unsaved asks first.
     Signing out first sends anything still waiting to be saved.
   - **Signing up or in as a guest** merges the guest's progress into the
     account, then clears it from the browser.
@@ -597,25 +612,31 @@ See **[DEPLOY.md](DEPLOY.md)** for the step-by-step guide. In short:
   - A private, encrypted S3 bucket for backups (90 days, kept if the stack
     is deleted).
   - GitHub's OIDC provider and a deploy role that only `main` and the
-    `production` environment can assume. It can only push to those two
-    repositories and run commands on that one server.
+    `production` environment of this repository (by its ID numbers) can
+    assume. It can only push to those two repositories and run the deploy
+    document on that one server.
+  - The deploy document (`<Name>-deploy`): deploys one commit, and only one
+    that is on `main`. It's the only thing GitHub can run on the server.
   - Optionally, the Route 53 record.
 - **First boot** (`deploy/aws/bootstrap.sh`): Ubuntu's Docker packages, the
   AWS CLI, a swap file, `deploy/.env` with secrets generated on the server,
   and a nightly backup job.
-- **Docker Compose** (`deploy/docker-compose.yml`) runs three containers:
+- **Docker Compose** (`deploy/docker-compose.yml`) runs four containers:
   - `caddy`: automatic HTTPS; serves the built app and Pyodide; proxies
     `/api`, `/admin` and `/static`.
   - `web`: Django on gunicorn. On start it migrates the database and
     re-imports `content/`, but only if every lesson passes its checks.
+  - `checker`: runs the code in lessons saved in the admin (§7.3), walled
+    off from everything else. It uses the `web` image.
   - `db`: PostgreSQL 17 on a persistent volume.
   The images are `$IMAGE_REPO/web:<commit>` and `$IMAGE_REPO/caddy:<commit>`.
 - **Continuous deployment** (GitHub Actions):
   1. `ci.yml` runs every test.
   2. On `main`, once everything passes, it builds the images and pushes them
      to ECR, tagged with the commit (`APP_VERSION` is baked in).
-  3. `deploy.yml` sends `deploy/deploy.sh <commit>` to the server through
-     Systems Manager (`deploy/aws/ssm-deploy.sh`).
+  3. `deploy.yml` runs the stack's deploy document on the server through
+     Systems Manager (`deploy/aws/ssm-deploy.sh`). It checks the commit is on
+     `main`, checks it out and runs its `deploy/deploy.sh`.
   4. `deploy.sh` backs up the database, pulls the images, restarts `web` and
      `caddy`, and waits for `/api/health` to report the new commit. If it
      doesn't, it rolls back to the previous version and fails.
@@ -648,15 +669,32 @@ See **[DEPLOY.md](DEPLOY.md)** for the step-by-step guide. In short:
   which also unlocks the account.
 - **PIN security**: a PIN is short, so it gets extra protection:
   - Hashed the same way Django hashes passwords.
-  - After 5 wrong PINs, the account locks for 5 minutes.
+  - After 5 wrong PINs, the account locks for 5 minutes. Sign-ins to one
+    account take turns (the account's row is locked while it's checked),
+    so a burst of guesses can't slip past the lock.
   - After 30 failures from one IP address, that address is blocked for 15
-    minutes.
+    minutes. A school shares one address, so misses followed by the right
+    PIN for the same username are forgiven: those were typos, not guesses.
+    IPv6 addresses count per /64 network.
+  - Usernames that don't exist take as long to check as real ones.
+  - The admin's sign-in has the same rules.
+  - Per computer: at most 50 new accounts an hour and 40 wrong team codes
+    every 15 minutes. Per student: at most 600 saved challenge runs an hour.
+    Staff can lift a block early by deleting its rows in the admin
+    (Accounts → Login failures / Rate limit hits).
   - Obvious PINs are refused: repeats (`111111`, `121212`, `408408`) and
     counting (`123456`, `987654`).
   - Adults use full passwords (at least 10 characters, checked by Django's
     validators).
   - A coach (on the team page) or an admin can give a student a new PIN, or
-    unlock the account.
+    unlock the account. A new PIN lets whoever has it sign in as the
+    student, so the coach types their password again first (it's good for
+    15 minutes).
+- **Staying signed in**: students stay signed in for a month on their own
+  laptop. Coaches and admins can do much more, and school computers are
+  shared, so their sessions end after 2 hours without use and 12 hours
+  after signing in (`accounts.sessions`). When someone opens the app still
+  signed in from an earlier visit, a note asks "Not you? Switch account".
 - Collect as little as possible. Students get a username, a display name and
   a preset avatar, with no free-text profile.
 - Student code and attempts are visible only to the student and to their
@@ -710,6 +748,8 @@ python-trainer/
 | 2026-09-27 | Lessons are YAML files with code inline, paged after each interactive block. Quizzes gate progress; challenges can be skipped. |
 | 2026-09-27 | Content is served from the database, with solutions only for coaches, mentors and staff. Guests keep progress in the browser, and it's imported when they sign up. |
 | 2026-09-27 | Admin lesson saves run the checker in a separate process with time and memory limits. Lessons from files are re-imported on each deploy, and the admin warns about this. |
+| 2026-09-27 | Lesson code from the admin runs in its own `checker` container (no network, no secrets, read-only disk), not next to the web server, so a staff account that can edit lessons can't reach the database or the secret key. The admin's sign-in has the same lockouts as the app's. |
+| 2026-09-27 | GitHub can only run a deploy document on the server (one commit, on `main`), not any shell command. Its role is tied to the repository's ID numbers, and Actions are pinned to commits. |
 | 2026-09-27 | `stop()` coasts and `brake()` stops sooner, like a real robot, so proportional control is worth learning. |
 | 2026-09-27 | Coach tools: coaches and mentors see their team's work; only coaches change accounts, and only kids' accounts. PINs are shown once, on printable cards. |
 | 2026-09-27 | Running on a real robot: lessons keep using the Trainer Bot, and code is rewritten for the team's robot (ports, directions, wheel sizes) when it's copied to Pybricks. Simulating each team's own robot comes later. |
