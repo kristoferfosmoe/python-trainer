@@ -9,7 +9,14 @@
 
 set -euo pipefail
 : "${INSTANCE_ID:?set INSTANCE_ID}" "${VERSION:?set VERSION}"
+# Values pasted into GitHub variables often carry stray spaces.
+INSTANCE_ID=${INSTANCE_ID//[[:space:]]/}
+VERSION=${VERSION//[[:space:]]/}
 [[ $VERSION =~ ^[0-9a-f]{40}$ ]] || { echo "VERSION must be a full commit SHA" >&2; exit 1; }
+[[ $INSTANCE_ID =~ ^i-[0-9a-f]{8,17}$ ]] || {
+    echo "::error::EC2_INSTANCE_ID should look like i-0123456789abcdef0 (the stack's InstanceId output), not '$INSTANCE_ID'." >&2
+    exit 1
+}
 
 online=$(aws ssm describe-instance-information \
     --filters "Key=InstanceIds,Values=$INSTANCE_ID" \

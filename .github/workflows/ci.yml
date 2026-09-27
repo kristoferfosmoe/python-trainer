@@ -115,6 +115,7 @@ jobs:
           IMAGE_REPO: ${{ vars.IMAGE_REPO }}
           VERSION: ${{ github.sha }}
         run: |
+          IMAGE_REPO=${IMAGE_REPO//[[:space:]]/} # stray spaces from pasting
           for target in web caddy; do
             image="$IMAGE_REPO/$target:$VERSION"
             # Tags can't be overwritten, so a re-run skips images already pushed.

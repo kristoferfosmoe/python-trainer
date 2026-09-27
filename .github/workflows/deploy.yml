@@ -77,6 +77,8 @@ jobs:
           SITE_URL: ${{ vars.SITE_URL }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
+          SITE_URL=${SITE_URL//[[:space:]]/}
+          SITE_URL=${SITE_URL%/}
           live=""
           for attempt in $(seq 1 20); do
             live=$(curl -fsS --max-time 10 "$SITE_URL/api/health" | jq -r .version) || live=""
