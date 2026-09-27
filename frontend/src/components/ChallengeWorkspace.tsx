@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { robot as currentRobot, runRequest, startFor, worldFor } from "../content";
 import { lineAt } from "../playback";
 import { runner, useRunnerStatus } from "../sim/instance";
-import { RunTimeout } from "../sim/runner";
+import { RunRestarted, RunTimeout } from "../sim/runner";
 import * as session from "../session";
 import type { Challenge, KidError, Trace } from "../types";
 import { usePlayback } from "../usePlayback";
@@ -29,6 +29,14 @@ export const TIMEOUT_ERROR: KidError = {
 
 export function runFailure(error: unknown): KidError {
   if (error instanceof RunTimeout) return TIMEOUT_ERROR;
+  if (error instanceof RunRestarted) {
+    return {
+      type: "SimulatorRestarted",
+      line: null,
+      python_message: error.message,
+      kid_message: "The simulator had to restart before your program ran. Press ▶ Run again.",
+    };
+  }
   return {
     type: "SimulatorError",
     line: null,
