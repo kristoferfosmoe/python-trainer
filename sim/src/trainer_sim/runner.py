@@ -51,6 +51,28 @@ def _no_open(*args, **kwargs):
     )
 
 
+STOP_GUARD = "__sim_stop__"
+
+
+class _GuardExceptBlocks(ast.NodeTransformer):
+    """Starts every `except` block with a call to Simulation.raise_if_stopped,
+    so once the simulator stops the program, catching that can't keep it
+    running. The call goes on the block's first line, so line numbers and
+    line counts don't change."""
+
+    def visit_ExceptHandler(self, node):
+        self.generic_visit(node)
+        guard = ast.Expr(ast.Call(ast.Name(STOP_GUARD, ast.Load()), [], []))
+        node.body.insert(0, ast.copy_location(guard, node.body[0]))
+        return node
+
+
+def compile_student_code(code):
+    """Compile `code` as the student's program. Raises SyntaxError."""
+    tree = _GuardExceptBlocks().visit(ast.parse(code, STUDENT_FILE))
+    return compile(ast.fix_missing_locations(tree), STUDENT_FILE, "exec")
+
+
 def _student_builtins():
     names = dict(builtins.__dict__)
     names["__import__"] = _guarded_import
@@ -60,7 +82,7 @@ def _student_builtins():
 
 
 def _execute(sim, compiled, code, seed):
-    namespace = {"__name__": "__main__", "__builtins__": _student_builtins()}
+    namespace = {"__name__": "__main__", "__builtins__": _student_builtins(), STOP_GUARD: sim.raise_if_stopped}
 
     def trace_line(frame, event, arg):
         if event == "line":
@@ -134,7 +156,7 @@ def run_program(code, world, robot, options=None, goals=None):
     sim = Simulation(world, robot, options)
     warnings = lint(code)
     try:
-        compiled = compile(code, STUDENT_FILE, "exec")
+        compiled = compile_student_code(code)
     except SyntaxError as exc:
         end = {"reason": "error", "error": explain(exc, code)}
     else:

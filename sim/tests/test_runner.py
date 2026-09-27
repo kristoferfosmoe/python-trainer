@@ -1,9 +1,15 @@
 import json
+import pathlib
+import subprocess
+import sys
+import textwrap
 
 import pytest
 
-from conftest import SETUP_LINES, printed
+from conftest import SETUP, SETUP_LINES, printed
 from trainer_sim.runner import run_program_json
+
+SRC = pathlib.Path(__file__).resolve().parents[1] / "src"
 
 
 def test_prints_have_times_and_lines(run):
@@ -54,6 +60,77 @@ def test_step_limit(run):
             pass
     """, max_lines=1000)
     assert result["end"]["reason"] == "step_limit"
+
+
+# Python turns tracing off when the tracer raises, so a stop caught by a bare
+# `except:` used to be lost, and a loop around it ran forever. Whether the
+# stop lands inside the `try` depends on timing, so each test tries every
+# phase, in a separate process so a hang fails the test instead of the run.
+def run_in_subprocess(code, robot, world, **options):
+    payload = json.dumps({"code": SETUP + textwrap.dedent(code).lstrip("\n"), "world": world, "robot": robot,
+                          "options": options})
+    script = f"import sys; sys.path.insert(0, {str(SRC)!r}); from trainer_sim.runner import run_program_json; " \
+             "print(run_program_json(sys.stdin.read()))"
+    try:
+        done = subprocess.run([sys.executable, "-c", script], input=payload, capture_output=True, text=True, timeout=30)
+    except subprocess.TimeoutExpired:
+        pytest.fail("the program never ended")
+    return json.loads(done.stdout)
+
+
+@pytest.mark.parametrize("catch", ["except:", "except BaseException:"])
+@pytest.mark.parametrize("time_limit", [1, 1.00025, 1.0005])
+def test_a_bare_except_cant_swallow_the_time_limit(robot, open_world, catch, time_limit):
+    result = run_in_subprocess(f"""
+        count = 0
+        while True:
+            try:
+                count = count + 1
+                double = count * 2
+            {catch}
+                print("oops")
+    """, robot, open_world, time_limit=time_limit)
+    assert result["end"]["reason"] == "time_limit"
+
+
+@pytest.mark.parametrize("max_lines", [1000, 1001, 1002])
+def test_a_bare_except_cant_swallow_the_step_limit(robot, open_world, max_lines):
+    result = run_in_subprocess("""
+        n = 0
+        while True:
+            try:
+                n += 1
+            except:
+                n = 0
+    """, robot, open_world, max_lines=max_lines)
+    assert result["end"]["reason"] == "step_limit"
+
+
+def test_a_bare_except_cant_swallow_the_stop_button(run):
+    result = run("""
+        while True:
+            try:
+                drive_base.straight(10)
+            except:
+                pass
+    """, buttons=[{"at": 500, "button": "CENTER"}], time_limit=5)
+    assert result["end"]["reason"] == "error"
+    assert result["end"]["error"]["type"] == "SystemExit"
+    assert result["end"]["t"] == pytest.approx(500, abs=20)
+
+
+def test_except_blocks_still_work_and_keep_their_line_numbers(run):
+    result = run("""
+        try:
+            x = 1 / 0
+        except ZeroDivisionError:
+            print("no dividing by zero")
+            y = undefined_name
+    """)
+    assert printed(result) == ["no dividing by zero"]
+    assert result["end"]["error"]["line"] == SETUP_LINES + 5
+    names = {name for change in result["vars"] for name, *_ in change["vars"]}
+    assert "x" not in names and "__sim_stop__" not in names
 
 
 def test_frames_follow_the_robot(run):
