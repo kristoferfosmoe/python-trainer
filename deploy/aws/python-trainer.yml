@@ -12,7 +12,7 @@ Metadata:
       - Label: {default: Server}
         Parameters: [UbuntuAmi, InstanceType, DiskSize, SshKeyName, SshAllowedCidr]
       - Label: {default: GitHub}
-        Parameters: [GitHubRepository, GitHubBranch, GitHubOidcProviderArn]
+        Parameters: [GitHubRepository, GitHubOwnerId, GitHubRepositoryId, GitHubBranch, GitHubOidcProviderArn]
       - Label: {default: Names}
         Parameters: [Name]
 
@@ -60,10 +60,24 @@ Parameters:
     Default: kristoferfosmoe/python-trainer
     Description: owner/name of the GitHub repository that deploys here.
     AllowedPattern: "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+  GitHubOwnerId:
+    Type: String
+    Default: "118781033"
+    AllowedPattern: "^[0-9]*$"
+    Description: >-
+      The repository owner's ID number (it never changes, unlike the name). Find it with
+      curl -s https://api.github.com/repos/OWNER/NAME | jq .owner.id
+      Empty (with GitHubRepositoryId empty) accepts any repository with this name.
+  GitHubRepositoryId:
+    Type: String
+    Default: "1389864295"
+    AllowedPattern: "^[0-9]*$"
+    Description: >-
+      The repository's ID number: curl -s https://api.github.com/repos/OWNER/NAME | jq .id
   GitHubBranch:
     Type: String
     Default: main
-    Description: Merges to this branch are deployed.
+    Description: Merges to this branch are deployed. Only commits on it can be deployed.
   GitHubOidcProviderArn:
     Type: String
     Default: ""
@@ -80,6 +94,7 @@ Conditions:
   UseKeyPair: !Not [!Equals [!Ref SshKeyName, ""]]
   AllowSsh: !Not [!Equals [!Ref SshAllowedCidr, ""]]
   CreateOidcProvider: !Equals [!Ref GitHubOidcProviderArn, ""]
+  PinGitHubIds: !Not [!Or [!Equals [!Ref GitHubOwnerId, ""], !Equals [!Ref GitHubRepositoryId, ""]]]
 
 Resources:
   # --- Where CI puts the images --------------------------------------------------------
@@ -281,19 +296,31 @@ Resources:
               StringEquals:
                 "token.actions.githubusercontent.com:aud": sts.amazonaws.com
               StringLike:
-                # GitHub writes the repository as owner/name, or (newer) with
-                # its ID numbers: owner@123/name@456. Accept either form.
-                "token.actions.githubusercontent.com:sub":
-                  - !Sub repo:${GitHubRepository}:ref:refs/heads/${GitHubBranch}
-                  - !Sub repo:${GitHubRepository}:environment:production
-                  - !Sub
-                    - repo:${Owner}@*/${Repo}@*:ref:refs/heads/${GitHubBranch}
-                    - Owner: !Select [0, !Split ["/", !Ref GitHubRepository]]
-                      Repo: !Select [1, !Split ["/", !Ref GitHubRepository]]
-                  - !Sub
-                    - repo:${Owner}@*/${Repo}@*:environment:production
-                    - Owner: !Select [0, !Split ["/", !Ref GitHubRepository]]
-                      Repo: !Select [1, !Split ["/", !Ref GitHubRepository]]
+                # GitHub writes the repository with its ID numbers
+                # (owner@123/name@456). Names can be given up and taken by
+                # someone else; ID numbers can't, so with the IDs set only
+                # this exact repository is accepted. Without them, either
+                # form of the name is (the older owner/name, or with any IDs).
+                "token.actions.githubusercontent.com:sub": !If
+                  - PinGitHubIds
+                  - - !Sub
+                      - repo:${Owner}@${GitHubOwnerId}/${Repo}@${GitHubRepositoryId}:ref:refs/heads/${GitHubBranch}
+                      - Owner: !Select [0, !Split ["/", !Ref GitHubRepository]]
+                        Repo: !Select [1, !Split ["/", !Ref GitHubRepository]]
+                    - !Sub
+                      - repo:${Owner}@${GitHubOwnerId}/${Repo}@${GitHubRepositoryId}:environment:production
+                      - Owner: !Select [0, !Split ["/", !Ref GitHubRepository]]
+                        Repo: !Select [1, !Split ["/", !Ref GitHubRepository]]
+                  - - !Sub repo:${GitHubRepository}:ref:refs/heads/${GitHubBranch}
+                    - !Sub repo:${GitHubRepository}:environment:production
+                    - !Sub
+                      - repo:${Owner}@*/${Repo}@*:ref:refs/heads/${GitHubBranch}
+                      - Owner: !Select [0, !Split ["/", !Ref GitHubRepository]]
+                        Repo: !Select [1, !Split ["/", !Ref GitHubRepository]]
+                    - !Sub
+                      - repo:${Owner}@*/${Repo}@*:environment:production
+                      - Owner: !Select [0, !Split ["/", !Ref GitHubRepository]]
+                        Repo: !Select [1, !Split ["/", !Ref GitHubRepository]]
       Policies:
         - PolicyName: push-images
           PolicyDocument:
@@ -317,14 +344,51 @@ Resources:
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
+              # Only the deploy document below, never any shell command.
               - Effect: Allow
                 Action: ssm:SendCommand
                 Resource:
                   - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/${Server}
-                  - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}::document/AWS-RunShellScript
+                  - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:document/${DeployDocument}
               - Effect: Allow
                 Action: [ssm:GetCommandInvocation, ssm:ListCommandInvocations, ssm:DescribeInstanceInformation]
                 Resource: "*"
+
+  # What GitHub can run on the server: deploy one commit that's on the deploy
+  # branch, nothing else. (With AWS-RunShellScript, the deploy role could run
+  # any command as root.) Every deploy runs that commit's deploy/deploy.sh as
+  # root, so only reviewed, merged code can be deployed.
+  DeployDocument:
+    Type: AWS::SSM::Document
+    Properties:
+      Name: !Sub ${Name}-deploy
+      DocumentType: Command
+      UpdateMethod: NewVersion
+      Content:
+        schemaVersion: "2.2"
+        description: Deploy one commit of Python Trainer from the deploy branch (deploy/deploy.sh).
+        parameters:
+          Version:
+            type: String
+            description: The full git commit to deploy.
+            allowedPattern: "^[0-9a-f]{40}$"
+        mainSteps:
+          - action: aws:runShellScript
+            name: deploy
+            inputs:
+              timeoutSeconds: "1200"
+              # Runs with sh (dash on Ubuntu), so no bash-only features.
+              runCommand:
+                - set -eu
+                - export HOME=/root
+                - for i in $(seq 60); do [ -f /var/lib/python-trainer/bootstrapped ] && break; echo Waiting for the server to finish setting up; sleep 10; done
+                - "[ -f /var/lib/python-trainer/bootstrapped ] || { echo The server never finished setting up: see /var/log/python-trainer-bootstrap.log; exit 1; }"
+                - . /etc/python-trainer.env
+                - cd /opt/python-trainer
+                - git fetch --quiet origin
+                - "git merge-base --is-ancestor {{ Version }} \"origin/${BRANCH:-main}\" || { echo \"{{ Version }} isn't on the ${BRANCH:-main} branch, so it can't be deployed.\"; exit 1; }"
+                - git checkout --quiet --force --detach {{ Version }}
+                - deploy/deploy.sh {{ Version }}
 
 Outputs:
   SiteUrl:
@@ -342,6 +406,9 @@ Outputs:
   DeployRoleArn:
     Description: "GitHub variable AWS_DEPLOY_ROLE_ARN"
     Value: !GetAtt DeployRole.Arn
+  DeployDocument:
+    Description: The only thing GitHub can run on the server (deploy/aws/ssm-deploy.sh finds it by name).
+    Value: !Ref DeployDocument
   Region:
     Description: "GitHub variable AWS_REGION"
     Value: !Ref AWS::Region

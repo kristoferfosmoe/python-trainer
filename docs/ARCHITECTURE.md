@@ -605,8 +605,11 @@ See **[DEPLOY.md](DEPLOY.md)** for the step-by-step guide. In short:
   - A private, encrypted S3 bucket for backups (90 days, kept if the stack
     is deleted).
   - GitHub's OIDC provider and a deploy role that only `main` and the
-    `production` environment can assume. It can only push to those two
-    repositories and run commands on that one server.
+    `production` environment of this repository (by its ID numbers) can
+    assume. It can only push to those two repositories and run the deploy
+    document on that one server.
+  - The deploy document (`<Name>-deploy`): deploys one commit, and only one
+    that is on `main`. It's the only thing GitHub can run on the server.
   - Optionally, the Route 53 record.
 - **First boot** (`deploy/aws/bootstrap.sh`): Ubuntu's Docker packages, the
   AWS CLI, a swap file, `deploy/.env` with secrets generated on the server,
@@ -624,8 +627,9 @@ See **[DEPLOY.md](DEPLOY.md)** for the step-by-step guide. In short:
   1. `ci.yml` runs every test.
   2. On `main`, once everything passes, it builds the images and pushes them
      to ECR, tagged with the commit (`APP_VERSION` is baked in).
-  3. `deploy.yml` sends `deploy/deploy.sh <commit>` to the server through
-     Systems Manager (`deploy/aws/ssm-deploy.sh`).
+  3. `deploy.yml` runs the stack's deploy document on the server through
+     Systems Manager (`deploy/aws/ssm-deploy.sh`). It checks the commit is on
+     `main`, checks it out and runs its `deploy/deploy.sh`.
   4. `deploy.sh` backs up the database, pulls the images, restarts `web` and
      `caddy`, and waits for `/api/health` to report the new commit. If it
      doesn't, it rolls back to the previous version and fails.
@@ -738,6 +742,7 @@ python-trainer/
 | 2026-09-27 | Content is served from the database, with solutions only for coaches, mentors and staff. Guests keep progress in the browser, and it's imported when they sign up. |
 | 2026-09-27 | Admin lesson saves run the checker in a separate process with time and memory limits. Lessons from files are re-imported on each deploy, and the admin warns about this. |
 | 2026-09-27 | Lesson code from the admin runs in its own `checker` container (no network, no secrets, read-only disk), not next to the web server, so a staff account that can edit lessons can't reach the database or the secret key. The admin's sign-in has the same lockouts as the app's. |
+| 2026-09-27 | GitHub can only run a deploy document on the server (one commit, on `main`), not any shell command. Its role is tied to the repository's ID numbers, and Actions are pinned to commits. |
 | 2026-09-27 | `stop()` coasts and `brake()` stops sooner, like a real robot, so proportional control is worth learning. |
 | 2026-09-27 | Coach tools: coaches and mentors see their team's work; only coaches change accounts, and only kids' accounts. PINs are shown once, on printable cards. |
 | 2026-09-27 | Running on a real robot: lessons keep using the Trainer Bot, and code is rewritten for the team's robot (ports, directions, wheel sizes) when it's copied to Pybricks. Simulating each team's own robot comes later. |
