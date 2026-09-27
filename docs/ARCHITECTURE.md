@@ -1,4 +1,4 @@
-# Python Trainer: Architecture (v0.2)
+# Python Trainer: Architecture (v1.0)
 
 A website that teaches FIRST LEGO League (FLL) Challenge students to program
 their robot in Python with the [Pybricks](https://pybricks.com) API. The
@@ -94,7 +94,7 @@ inside a WebAssembly Python runtime (Pyodide).
    shows the console, the variables and the sensor readings in sync with the
    robot.
 7. Goals are checked by the simulator and returned in the trace. The UI
-   reveals them when playback reaches the end. From milestone 3, it also
+   reveals them when playback reaches the end. For signed-in students it also
    saves the attempt to the server.
 
 If the worker doesn't respond within 20 s of wall-clock time, the UI stops it
@@ -217,7 +217,15 @@ knows, so common real-robot mistakes behave the same way:
   - Sensor noise has a standard deviation of 1.5.
 
   Imperfections are added where wheel rotation becomes movement, so encoder
-  readings stay perfect, like on a real robot. Without the gyro, a 1.6 m
+  readings stay perfect, like on a real robot. A challenge can also set its
+  own amounts, e.g. `realism: {slip: 0.07}` for a slippery mat.
+- **Stopping**: `stop()` lets the robot **coast** to a halt (about 45 mm from
+  300 mm/s), and `brake()` stops it sooner (about 18 mm). When a program
+  ends, the hub stops the motors and the robot rolls to a halt. This is what
+  makes proportional speed control matter, as on a real robot.
+- **Buttons**: a challenge can script hub button presses
+  (`buttons: [{at: 1500, button: CENTER}]`), like a teammate starting each
+  mission. Without the gyro, a 1.6 m
   straight drifts about 27 cm. With the gyro it stays on target. The
   "Straight as an Arrow" challenge teaches exactly this.
 
@@ -261,6 +269,7 @@ an automatic first goal: "Program runs without errors".
 | `max_time` | `{type: max_time, seconds: 30}` |
 | `must_use` | `{type: must_use, construct: for}`. Also `while`, `if`, `def`, `list`, `variable`, `fstring`, `floor_divide` (`//`) or `modulo` (`%`) (checked by parsing the code). |
 | `max_calls` | `{type: max_calls, name: straight, value: 1}`. Encourages loops and functions. `value: 0` means "don't use it" (e.g. drive with motors instead). |
+| `min_calls` | `{type: min_calls, name: pressed}`. The code must call it at least once (default 1). |
 | `uses_variable_in` | `{type: uses_variable_in, name: straight}`. Every call gets a variable, not a plain number. |
 | `printed` | `{type: printed, text: "Found it"}` |
 
@@ -338,7 +347,7 @@ content/challenges/*.yaml                          # playground challenges
 
 Units and lessons are ordered by their file names. Code is written inline in
 the YAML, which keeps each lesson a single JSON document for the database
-(milestone 3). A short example:
+(§8). A short example:
 
 ```yaml
 id: for-loops
@@ -376,11 +385,11 @@ shown in the challenge card, above the challenge's own instructions.
   complete once it's solved.
 - A lesson is complete when the student reaches the end with every quiz and
   goal challenge done.
-- Until accounts exist, progress and edited code live in the browser
-  (`localStorage`). Milestone 3 moves them to the server (`LessonProgress`,
-  `CodeDraft`, `Attempt`).
+- Progress and edited code are saved on the server for signed-in students
+  (`LessonProgress`, `CodeDraft`, `Attempt`), and in the browser for guests
+  (§10).
 
-**Validation** (`sim/src/trainer_content`, run by `pytest` and later by the
+**Validation** (`sim/src/trainer_content`, run by `pytest`, `import_content` and the
 backend):
 - Structure, ids and quiz answers.
 - Examples and visualize blocks must run (or fail, when `expect_error` is
@@ -393,150 +402,185 @@ backend):
 ### 7.3 How teachers add lessons
 
 - **Database is the source of truth at runtime.** A lesson's content is stored
-  as JSON using the schema above.
-- **File import**: `manage.py import_content content/` loads or updates the
-  lessons in the repo.
-- **Web editing (v1)**: Django admin, with a schema-validated YAML/JSON field
-  and a "Preview" link that opens the lesson as a student sees it.
-- **Validation**: the `trainer_content` checker (§7.2) runs in CI and when a
-  lesson is saved in admin. A lesson with problems is rejected, with a list of
-  what's wrong.
+  as JSON (the blocks as written, with `ref:` left unexpanded), and expanded
+  when it's served.
+- **File import**: `manage.py import_content` checks every lesson, then loads
+  or updates the lessons in `content/`. It runs on every deploy. If any
+  lesson has a problem, nothing is imported.
+- **Web editing**: in the Django admin (Curriculum → Lessons), a lesson's
+  blocks are edited as YAML in a large text box. Multi-line text is shown as
+  readable `|` blocks.
+  - **Saving runs the full checker in a separate process**, with a time and
+    memory limit, so lesson code never runs inside the web server. A lesson
+    with problems isn't saved, and the problems are listed.
+  - Worlds, the robot and playground challenges have YAML editors too.
+  - "Open ↗" previews the lesson on the site. Staff can see unpublished
+    lessons.
+- **Lessons from files** show a warning in the admin: edits are replaced at
+  the next import. Changing the slug turns it into an admin-owned copy.
 - **Team-specific lessons**: a course has an optional owner team. Blank means
   everyone can see it; otherwise only that team can. This lets a coach write
   lessons just for their team.
-- **Versioning**: each lesson has a `version` number. Attempts record the
-  version they were made against, so editing a lesson doesn't break
-  students' history.
-- **Later**: a dedicated authoring UI with a visual world editor.
+- **Versioning**: a lesson's `version` goes up whenever its content changes.
+  Attempts record the version they were made against.
+- **Later**: a friendlier authoring UI with a visual world editor.
 
-### 7.4 Starting curriculum
+### 7.4 Curriculum
 
-Units 1–4 are written (12 lessons, each ending in a challenge):
+All 12 units are written: 28 lessons, each ending in a challenge. Every
+solution is checked in CI.
 
-| Unit | Lessons |
+| Unit | Lessons (challenges) |
 |---|---|
-| 1. Meet the Robot | Hello, Python! (print, strings, comments, bugs) · First Moves (setup lines, `straight`, mm) · Turning (`turn`, sequences; "Around the Crate") |
-| 2. Variables | Variables Are Boxes (assignment, naming; "Score Keeper") · Variables Drive the Robot (`+=`; "There and Back Again") · Text and Numbers (types, f-strings; "Mission Report") |
-| 3. Math for Robots | Python Is a Calculator (`//`, `%`; "Match Timer") · Wheels and Circles (π, degrees ↔ mm; "Motor Math" with `run_angle`) · Speed × Time (`drive` + `wait`; "Timed Parking") |
-| 4. Loops | Repeat with for ("Square Dance") · Repeat with while ("Stop at the Line") · Lists and Loops (lists, indexes, `append`; "Spiral") |
-
-The plan for all units:
-
-1. **Meet the robot**: `print`, running code, the robot's first `straight()`
-2. **Variables**: assigning, naming, updating (`speed = speed + 50`)
-3. **Math for robots**: wheel circumference, and converting degrees to mm
-4. **Loops**: `for`/`range`, `while`
-5. **Decisions**: `if`/`elif`/`else`, comparisons, "stop at the black line"
-6. **Functions**: `def turn_left(deg)`, parameters, `return`
-7. **Lists**: storing a sequence of moves or waypoints, looping over a list
-8. **Sensors**: color and reflection, the gyro, turning with the gyro
-9. **Line following**: bang-bang, then proportional
-10. **Proportional control**: driving straight with the gyro, tuning the gain
-    `k`
-11. **Mission runner**: a list of mission functions and a menu that uses the
-    hub's buttons
-12. **Debugging**: reading errors, printing values, testing one piece at a
-    time
+| 1. 🤖 Meet the Robot | Hello, Python! (Robot Greeting) · First Moves (First Drive) · Turning (Around the Crate) |
+| 2. 📦 Variables | Variables Are Boxes (Score Keeper) · Variables Drive the Robot (There and Back Again) · Text and Numbers (Mission Report) |
+| 3. 🧮 Math for Robots | Python Is a Calculator (Match Timer) · Wheels and Circles (Motor Math) · Speed × Time (Timed Parking) |
+| 4. 🔁 Loops | Repeat with for (Square Dance) · Repeat with while (Stop at the Line) · Lists and Loops (Spiral) |
+| 5. 🔀 Decisions | If This, Then That (Traffic Light) · Many Choices: elif, and/or/not, break (Color Commands) |
+| 6. 🧩 Functions | Your Own Commands (Staircase) · Inputs and Outputs: parameters, return (Two Squares, Unit Converter) |
+| 7. 📋 Lists and Dictionaries | Working with Lists: sum/max, lists of pairs (Delivery Route) · Dictionaries (Score Sheet) |
+| 8. 📡 Sensors | The Color Sensor: counting with a state variable (Count the Lines) · The Gyro: gyro turns (Slippery Square) |
+| 9. 〰️ Line Following | Wiggle Along the Line: bang-bang (Wiggle Follower) · Smooth Following: proportional (Line Follower) |
+| 10. 🎯 Proportional Control | Straight with the Gyro (Your Own Gyro Controller) · Smooth Parking (Smooth Parking) |
+| 11. 🏁 Mission Runner | Missions as Functions (Two Missions) · Press to Start: hub buttons (Press to Start) |
+| 12. 🐞 Debugging | Reading Error Messages (Bug Hunt) · Detective Work: logic bugs (Fix the Line Stopper) |
 
 ## 8. Accounts, teams and data model
 
 ```mermaid
 erDiagram
-  User ||--o| Profile : has
   User ||--o{ Membership : "belongs to"
   Team ||--o{ Membership : has
   Team ||--o{ Course : "owns (optional)"
   Course ||--o{ Unit : contains
   Unit ||--o{ Lesson : contains
-  User ||--o{ CodeDraft : autosaves
-  User ||--o{ Attempt : submits
-  User ||--o{ LessonProgress : tracks
-  Lesson ||--o{ CodeDraft : ""
+  User ||--o{ CodeDraft : saves
+  User ||--o{ Attempt : makes
+  User ||--o{ LessonProgress : has
   Lesson ||--o{ Attempt : ""
   Lesson ||--o{ LessonProgress : ""
 ```
 
-| Model | Key fields |
-|---|---|
-| `User` (Django) | username, password. **Students have no email.** |
-| `Profile` | display_name, avatar (preset), kind: student / adult |
-| `Team` | name, season, join_code |
-| `Membership` | user, team, role: `student` / `mentor` / `coach` |
-| `Course`, `Unit`, `Lesson` | slug, title, order, published; `Lesson.content` (JSON), `Lesson.version` |
-| `CodeDraft` | user, lesson, block_id, code, updated_at |
-| `Attempt` | user, lesson, block_id, lesson_version, code, passed, goal_results (JSON), sim_version, created_at |
-| `LessonProgress` | user, lesson, status (not started / in progress / done), completed_at |
+| App | Model | Key fields |
+|---|---|---|
+| `accounts` | `User` (custom) | username (unique, ignoring case), password hash (the PIN for students), `kind` (student/adult), `display_name`, `avatar` (a preset emoji), `failed_logins`, `locked_until`. **Students have no email.** |
+| | `LoginFailure` | ip, created_at (IP throttling; cleaned up after a day) |
+| `teams` | `Team` | name, season, `join_code` (6 characters, with no 0/O/1/I) |
+| | `Membership` | user, team, role: `student` / `mentor` / `coach` |
+| `curriculum` | `World`, `Robot`, `PlaygroundChallenge` | slug, spec (JSON, as in the YAML files) |
+| | `Course` → `Unit` → `Lesson` | slug, title, order, published; `Course.owner_team` (optional); `Lesson.content` (JSON blocks as written), `Lesson.version`, `Lesson.source` (the file it came from) |
+| `progress` | `LessonProgress` | user, lesson, page, done (block ids), finished. Merges only move forward. |
+| | `CodeDraft` | user, key (`lesson/<lesson>/<block>` or `playground/<id>`), code |
+| | `Attempt` | user, key, lesson, block_id, lesson_version, code, passed, goals, sim_version |
 
-**Built now, used later by the coach app:** a permission rule that says
-"coaches and mentors can read the drafts, attempts and progress of students
-on their team". It's enforced in one place in the API layer. The coach UI
-will only need new screens, not new data.
+**Built now, used later by the coach app:** `teams/permissions.py` holds
+the one rule, "coaches and mentors can see the students on their team;
+staff can see everyone". `GET /api/teams/{id}/students` already serves a
+team's progress to its coaches, so the coach UI only needs screens.
 
 Pass/fail is computed in the browser and reported to the server. A student
 could fake a pass. That's fine for a learning tool, and it's the trade-off
 for never running student code on the server.
 
-## 9. API sketch (v1)
+## 9. API
+
+Django Ninja (JSON, session cookies, CSRF). The OpenAPI docs are at
+`/api/docs`.
 
 ```
-POST /api/auth/login | /api/auth/logout      GET /api/me
-POST /api/teams/join            {join_code}
-GET  /api/courses               GET /api/courses/{slug}
-GET  /api/lessons/{id}          (never includes solution code)
-GET  /api/lessons/{id}/drafts   PUT /api/lessons/{id}/drafts/{block_id}
-POST /api/lessons/{id}/attempts
-GET  /api/me/progress
-# later: /api/teams/{id}/students, /api/teams/{id}/progress, ...
+GET  /api/csrf                       sets the CSRF cookie
+GET  /api/health                     uptime check (checks the database too)
+POST /api/auth/signup                {username, pin, display_name, avatar, join_code}
+POST /api/auth/login                 {username, secret}   (a PIN, or a password for adults)
+POST /api/auth/logout
+GET  /api/auth/me                    {user: ... | null}
+GET  /api/auth/suggest-username
+POST /api/teams/join                 {code}
+GET  /api/teams/{id}/students        coaches and mentors of that team only
+GET  /api/catalog                    courses (lesson titles), playground, worlds, robot
+GET  /api/lessons/{slug}             blocks with playground refs expanded
+GET  /api/me/state                   progress, solved playground challenges, drafts
+POST /api/me/import                  merge a guest's browser progress into the account
+PUT  /api/progress/{slug}            {page, done, finished}  (merged, never goes backwards)
+PUT  /api/drafts                     {key, code}
+POST /api/attempts                   {key, code, passed, goals, sim_version, lesson_id, block_id}
 ```
 
-Django Ninja publishes an OpenAPI schema, and the TypeScript API client is
-generated from it.
+**Challenge solutions are only sent to coaches, mentors and staff.** Quiz
+answers are sent to everyone (the browser checks them), which is fine for
+practice quizzes.
 
 ## 10. Frontend
 
-- **Pages**: log in or join a team; course map (a path of lessons, styled
-  like an FLL field); lesson player; challenge workspace; playground (free
-  driving on any practice mat, no goals).
-- **Challenge workspace layout**: editor on the left; mat on the right;
-  console, variables and goals below. Buttons: Run, Reset, Hint, Copy for
-  Pybricks.
-- **Libraries**: React Router, TanStack Query (server data), CodeMirror 6
-  (Python mode, Pybricks autocomplete, line highlighting), Canvas 2D
-  renderer, Comlink (to talk to the Web Worker).
+- **Routes** (hash-based, so the server needs no rewrite rules):
+  - `#/`: the course map.
+  - `#/lesson/<slug>/<page>`.
+  - `#/playground/<id>`.
+  - `#/signup`, `#/signin` and `#/account`.
+- **Start-up**: the app loads the catalog and the session, and shows the app
+  once both have arrived. Lessons are loaded when opened, and cached.
+- **Session store** (`session.ts`):
+  - **Guests** keep progress, drafts and solved challenges in
+    `localStorage`.
+  - **Signed-in students** get them from `/api/me/state`. Changes show
+    instantly and are sent to the server in the background (drafts after an
+    800 ms pause). A "⚠ Not saved yet" pill appears if saving fails.
+  - **Signing up or in as a guest** merges the guest's progress into the
+    account, then clears it from the browser.
+- **Libraries**: React, CodeMirror 6 (Python mode, Pybricks autocomplete,
+  line decorations), Canvas 2D, marked + DOMPurify (lesson Markdown),
+  and @lezer/python (code highlighting in lesson text). No router or data
+  library is needed at this size.
 - **Pyodide** is served from our own domain rather than a CDN, because some
-  school networks block CDNs. The browser caches it after the first visit.
+  school networks block CDNs.
 
 ## 11. Deployment
 
-- **Instance**: one EC2 instance (a small one to start) with an Elastic IP
-  and a domain name.
-- **Docker Compose** services:
-  - `caddy`: HTTPS certificates, serves the built frontend and Pyodide with
-    long cache headers, and proxies `/api` and `/admin`.
-  - `web`: Django on gunicorn.
-  - `db`: PostgreSQL with a persistent volume.
-- **Backups**: a nightly `pg_dump` to S3, using the instance's IAM role.
-- **Security group**: open only ports 80 and 443. Use SSM Session Manager
-  (or SSH limited to your IP) for admin access.
-- **CI (GitHub Actions)**: simulator tests, backend tests, lesson solution
-  validation, frontend type checks and tests, then build the Docker images.
-  Deploy with `docker compose pull && up -d`.
+See **[DEPLOY.md](DEPLOY.md)** for the step-by-step guide. In short:
+
+- **One EC2 instance** (t3.small or t4g.small) with an Elastic IP and a
+  domain name.
+- **Docker Compose** (`deploy/docker-compose.yml`) runs three containers:
+  - `caddy`: automatic HTTPS; serves the built app and Pyodide; proxies
+    `/api`, `/admin` and `/static`.
+  - `web`: Django on gunicorn. On start it migrates the database and
+    re-imports `content/`, but only if every lesson passes its checks.
+  - `db`: PostgreSQL 17 on a persistent volume.
+- **Security headers** (Caddyfile):
+  - HSTS, `nosniff`, a referrer policy and a permissions policy.
+  - A **Content-Security-Policy** that allows only this origin, plus
+    `'wasm-unsafe-eval'` so Pyodide can run WebAssembly.
+  - Hashed assets are cached for a year; the page itself is `no-cache`.
+- **Backups**: `deploy/backup.sh` runs `pg_dump` nightly from cron to S3,
+  using the instance's IAM role, and keeps 14 days on disk.
+- **CI (GitHub Actions)**:
+  - Simulator and lesson checks (Python 3.11 and 3.14).
+  - Backend tests on PostgreSQL, plus a missing-migrations check.
+  - Typecheck, unit tests and build.
+  - Browser tests against the real backend.
+  - Docker image builds.
+  - An optional manual **Deploy** workflow (over SSH).
 
 ## 12. Sign-in and privacy (children under 13)
 
-- **Early sign-up**: students choose a **username and a PIN**. There's no
-  email, real name or birth date. The sign-up page suggests a made-up name
-  instead of a real one.
+- **Sign-up**: students choose a **username and a 6-digit PIN**, with an
+  optional nickname, a preset avatar and a team code. There's no email,
+  real name or birth date. A 🎲 button suggests a made-up username (like
+  "BraveOtter42"), and the form warns not to use a real name.
 - **Later (coach app)**: a coach creates and manages student accounts and
   hands out usernames and PINs. They can also reset a forgotten PIN. The
   data model (§8) already supports this: a coach's `Membership` gives them
   authority over the students on their team.
 - **PIN security**: a PIN is short, so it gets extra protection:
   - Hashed the same way Django hashes passwords.
-  - Lockout after repeated failures, limited per account and per IP address.
-  - A minimum length (6 digits proposed).
-  - Rejection of obvious PINs such as `123456` and `000000`.
-  - Adult accounts (coaches) use full passwords.
+  - After 5 wrong PINs, the account locks for 5 minutes.
+  - After 30 failures from one IP address, that address is blocked for 15
+    minutes.
+  - Obvious PINs are refused: repeats (`111111`, `121212`, `408408`) and
+    counting (`123456`, `987654`).
+  - Adults use full passwords (at least 10 characters, checked by Django's
+    validators).
+  - An admin can give a student a new PIN, or unlock the account.
 - Collect as little as possible. Students get a username, a display name and
   a preset avatar, with no free-text profile.
 - Student code and attempts are visible only to the student and, later, to
@@ -555,11 +599,12 @@ generated from it.
 python-trainer/
   sim/          Python simulator + simulated pybricks package (pytest, uv);
                 trainer_content: lesson loader and checker (reused by the backend)
-  backend/      Django project: accounts, teams, curriculum, progress
-  frontend/     React + TS app: lesson player, editor, renderer, worker
-  content/      Lessons, worlds and robot files (YAML + .py)
-  deploy/       docker-compose.yml, Caddyfile, backup script
-  docs/         This document and later design notes
+  backend/      Django project: accounts, teams, curriculum, progress (pytest)
+  frontend/     React + TS app: course map, lesson player, visualizer,
+                editor, renderer, worker (vitest, Playwright)
+  content/      Courses, playground challenges, worlds and the robot (YAML)
+  deploy/       Dockerfile, docker-compose.yml, Caddyfile, backup script
+  docs/         This document and DEPLOY.md
 ```
 
 ## 14. Roadmap
@@ -568,10 +613,10 @@ python-trainer/
 |---|---|
 | **M1: Simulator playground** ✅ | `sim/` package + tests; Web Worker with Pyodide; mat renderer; editor; trace playback; friendly errors. No accounts. This is the riskiest and most fun part, so it gets built and tested with a real kid first. |
 | **M2: Lessons** ✅ | Lesson schema, lesson player, visualizer, quizzes, goals, hints; first 4 units of the curriculum |
-| **M3: Accounts & progress** | Django backend, teams and join codes, drafts, attempts, progress, admin lesson editing, content import and validation |
-| **M4: Deploy** | EC2 + Compose + Caddy + backups + CI |
-| **M5: Rest of the curriculum** | Sensors, line following, proportional control, mission runner |
-| **Later** | Coach dashboard, a better lesson authoring UI with a world editor, AI tutor (a proxy endpoint on the server), pushable mission models, custom robot files, season-specific mats |
+| **M3: Accounts & progress** ✅ | Django backend, teams and join codes, drafts, attempts, progress, admin lesson editing, content import and validation |
+| **M4: Deploy** ✅ | EC2 + Compose + Caddy + backups + CI |
+| **M5: Rest of the curriculum** ✅ | Units 5–12: decisions, functions, lists and dictionaries, sensors, line following, proportional control, mission runner, debugging |
+| **Later** | Coach dashboard (the API and permissions are ready), a friendlier lesson authoring UI with a world editor, an AI tutor (a proxy endpoint on the server), pushable mission models, custom robot files, season-specific mats, `hub_menu` and `multitask` in the simulator |
 
 ## 15. Decision log
 
@@ -583,4 +628,7 @@ python-trainer/
 | 2026-09-26 | One standard training robot ("Trainer Bot"). Custom robots and robot mods come later. The app is mainly about Python. |
 | 2026-09-26 | Original practice mats built from shapes. No copyrighted season artwork. |
 | 2026-09-26 | Pushing or collecting mission models comes after v1 |
-| 2026-09-27 | Lessons are YAML files with code inline, paged after each interactive block. Quizzes gate progress; challenges can be skipped. Progress stays in the browser until milestone 3. |
+| 2026-09-27 | Lessons are YAML files with code inline, paged after each interactive block. Quizzes gate progress; challenges can be skipped. |
+| 2026-09-27 | Content is served from the database, with solutions only for coaches, mentors and staff. Guests keep progress in the browser, and it's imported when they sign up. |
+| 2026-09-27 | Admin lesson saves run the checker in a separate process with time and memory limits. Lessons from files are re-imported on each deploy, and the admin warns about this. |
+| 2026-09-27 | `stop()` coasts and `brake()` stops sooner, like a real robot, so proportional control is worth learning. |

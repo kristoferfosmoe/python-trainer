@@ -1,5 +1,5 @@
 // Markdown for lesson text, with Python code blocks syntax-highlighted.
-// Lesson text will come from teachers (milestone 3), so the HTML is sanitized.
+// Lesson text can come from teachers (the admin), so the HTML is sanitized.
 
 import DOMPurify from "dompurify";
 import { classHighlighter, highlightCode } from "@lezer/highlight";
