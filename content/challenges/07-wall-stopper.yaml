@@ -1,5 +1,6 @@
 id: wall-stopper
 title: Wall Stopper
+section: Sensors
 world: practice-field
 start: {x: 1750, y: 830, heading: 0}
 time_limit: 30

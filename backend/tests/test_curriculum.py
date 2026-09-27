@@ -22,7 +22,7 @@ pytestmark = pytest.mark.django_db
 
 def test_import_loaded_everything():
     assert World.objects.count() >= 6
-    assert PlaygroundChallenge.objects.count() == 7
+    assert PlaygroundChallenge.objects.count() == 12
     assert Lesson.objects.count() >= 12
     first = Lesson.objects.first()
     assert first.slug == "hello-python"

@@ -58,6 +58,8 @@ export interface GoalSpec {
 export interface Challenge {
   id: string;
   title: string;
+  /** Playground group, like "Driving" or "Sensors". */
+  section?: string;
   world?: string; // no world: a console-only challenge
   start?: Pose;
   time_limit?: number;

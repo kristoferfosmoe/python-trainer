@@ -1,0 +1,29 @@
+# A mat for the playground's Sensors challenges.
+# Middle lane: colored tiles for the color sensor.
+# Bottom right: a crate for the distance sensor to find.
+# Left side: a target straight "up" from the gyro start spot.
+id: sensor-lab
+name: Sensor Lab
+size: [2362, 1143]
+background: white
+grid: 100
+start: {x: 200, y: 570, heading: 0}
+shapes:
+  # The lane
+  - {type: line, points: [[0, 460], [1700, 460]], width: 6, color: gray}
+  - {type: line, points: [[0, 680], [1700, 680]], width: 6, color: gray}
+  # Colored tiles, left to right
+  - {type: rect, x: 450, y: 480, w: 120, h: 180, color: blue}
+  - {type: rect, x: 750, y: 480, w: 120, h: 180, color: green}
+  - {type: rect, x: 1050, y: 480, w: 120, h: 180, color: yellow}
+  - {type: rect, x: 1400, y: 480, w: 120, h: 180, color: red}
+  # Gyro target
+  - {type: circle, x: 300, y: 1010, r: 45, color: yellow}
+  # Crate parking spot
+  - {type: rect, x: 1680, y: 90, w: 200, h: 200, color: orange}
+zones:
+  - {id: red-stop, label: Red tile stop, type: rect, x: 1300, y: 480, w: 200, h: 180}
+  - {id: gyro-target, label: Target, type: circle, x: 300, y: 1010, r: 70}
+  - {id: crate-spot, label: Crate parking, type: rect, x: 1680, y: 90, w: 200, h: 200}
+obstacles:
+  - {label: crate, type: rect, x: 1950, y: 100, w: 180, h: 180}

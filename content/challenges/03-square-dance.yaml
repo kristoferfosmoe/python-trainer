@@ -1,5 +1,6 @@
 id: square-dance
 title: Square Dance
+section: Driving
 world: practice-field
 start: {x: 250, y: 1000, heading: 0}
 time_limit: 60

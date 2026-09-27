@@ -1,5 +1,6 @@
 id: line-follower
 title: Line Follower
+section: Sensors
 world: line-track
 time_limit: 90
 summary: Follow the black line all the way around the track.
