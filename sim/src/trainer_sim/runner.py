@@ -10,7 +10,7 @@ import time
 
 from . import __version__, context
 from .errors import (
-    STUDENT_FILE, BlockedImport, RobotError, StepLimit, TimeUp, explain, lint,
+    STUDENT_FILE, BlockedImport, RobotError, StepLimit, StopButtonPressed, TimeUp, explain, lint,
 )
 from .goals import check_goals
 from .sim import DT_MS, RECORD_EVERY, Simulation
@@ -78,9 +78,14 @@ def _execute(sim, compiled, code, seed):
     context.set_current(sim)
     sys.stdout = _Output(sim)
     sys.settrace(trace_call)
+    sim.program_running = True
     try:
         exec(compiled, namespace)
         return {"reason": "finished"}
+    except StopButtonPressed as exc:
+        error = explain(exc, code)
+        error.update(type="SystemExit", python_message="SystemExit: stop button pressed")
+        return {"reason": "error", "error": error}
     except TimeUp:
         return {"reason": "time_limit"}
     except StepLimit:
@@ -90,6 +95,7 @@ def _execute(sim, compiled, code, seed):
     except BaseException as exc:  # noqa: BLE001 - any student error is reported, not raised
         return {"reason": "error", "error": explain(exc, code)}
     finally:
+        sim.program_running = False
         sys.settrace(None)
         sys.stdout = old_stdout
         context.set_current(None)

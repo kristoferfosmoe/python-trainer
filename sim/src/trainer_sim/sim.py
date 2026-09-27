@@ -11,7 +11,7 @@ import random
 
 from pybricks.parameters import Button
 
-from .errors import DeviceError, StepLimit, TimeUp
+from .errors import DeviceError, StepLimit, StopButtonPressed, TimeUp
 from .motion import SimMotor, Slowdown, coast
 from .robot import RobotSpec
 from .shapes import to_world
@@ -53,6 +53,10 @@ class Simulation:
         self.realism = Realism(options.get("realism", "off"))
         self.rng = random.Random(options.get("seed", 1))
         self.button_presses = options.get("buttons", [])
+        # Like a real hub, the center button stops the program unless the
+        # program picks another stop button (hub.system.set_stop_button).
+        self.stop_buttons = frozenset({Button.CENTER})
+        self.program_running = False
 
         self.now = 0.0  # virtual time in ms
         self.phys_t = 0.0  # time of the last physics tick
@@ -135,6 +139,10 @@ class Simulation:
         self.ticks += 1
         if self.ticks % RECORD_EVERY == 0:
             self.recorder.frame()
+        if self.program_running and self.button_presses and self.stop_buttons:
+            if self.stop_buttons <= self.buttons_at(self.phys_t):
+                self.now = max(self.now, self.phys_t)
+                raise StopButtonPressed(self.stop_buttons)
 
     def _wheel_travel(self, port):
         motor = self.motors[port]
@@ -221,13 +229,16 @@ class Simulation:
         drift = self.realism.gyro_drift * self.phys_t / 1000
         return self.heading - self.start_heading + drift
 
-    def pressed_buttons(self):
+    def buttons_at(self, t):
         pressed = set()
         for press in self.button_presses:
             start = float(press.get("at", 0))
-            if start <= self.now < start + float(press.get("duration", 200)):
+            if start <= t < start + float(press.get("duration", 200)):
                 pressed.add(getattr(Button, press.get("button", "CENTER")))
         return pressed
+
+    def pressed_buttons(self):
+        return self.buttons_at(self.now)
 
     # --- Devices -----------------------------------------------------------------
 

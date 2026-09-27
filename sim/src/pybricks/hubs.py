@@ -3,10 +3,10 @@
 import re
 
 from trainer_sim.context import current
-from trainer_sim.errors import NotInSimulator
+from trainer_sim.errors import ArgumentError, NotInSimulator
 
 from ._args import number
-from .parameters import Color, Side
+from .parameters import Button, Color, Side
 
 
 class _IMU:
@@ -150,8 +150,24 @@ class _Buttons:
 
 
 class _System:
+    def __init__(self, sim):
+        self._sim = sim
+
     def set_stop_button(self, button):
-        pass
+        """None turns the stop button off; a Button, or a tuple of Buttons pressed together."""
+        if button is None:
+            buttons = frozenset()
+        elif isinstance(button, Button):
+            buttons = frozenset({button})
+        elif isinstance(button, (tuple, list, set)) and button and all(isinstance(b, Button) for b in button):
+            buttons = frozenset(button)
+        else:
+            raise ArgumentError(
+                f"expected a Button, a tuple of Buttons or None, got {button!r}",
+                "`set_stop_button()` needs a button like `Button.BLUETOOTH`, "
+                "a tuple of buttons pressed together, or `None` for no stop button.",
+            )
+        self._sim.stop_buttons = buttons
 
     def name(self):
         return "Trainer Bot"
@@ -184,7 +200,7 @@ class PrimeHub:
         self.display = _Display(sim)
         self.speaker = _Speaker(sim)
         self.buttons = _Buttons(sim)
-        self.system = _System()
+        self.system = _System(sim)
         self.battery = _Battery()
 
     def __repr__(self):

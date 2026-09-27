@@ -1,6 +1,6 @@
 import pytest
 
-from conftest import printed
+from conftest import SETUP_LINES, final_pose, printed
 from trainer_sim.world import World
 
 LINE_WORLD = {
@@ -128,9 +128,73 @@ def test_buttons_follow_schedule(run):
         while not hub.buttons.pressed():
             wait(10)
         print(hub.buttons.pressed())
-    """, buttons=[{"at": 1000, "button": "CENTER", "duration": 500}])
-    assert printed(result) == ["{Button.CENTER}"]
+    """, buttons=[{"at": 1000, "button": "LEFT", "duration": 500}])
+    assert printed(result) == ["{Button.LEFT}"]
     assert result["end"]["t"] == pytest.approx(1000, abs=20)
+
+
+def test_center_button_stops_the_program_like_a_real_hub(run):
+    result = run("""
+        print("waiting")
+        while not hub.buttons.pressed():
+            wait(10)
+        print("never printed")
+    """, buttons=[{"at": 1000, "button": "CENTER", "duration": 300}])
+    assert printed(result) == ["waiting"]
+    end = result["end"]
+    assert end["reason"] == "error"
+    assert end["t"] == pytest.approx(1000, abs=10)
+    assert end["error"]["type"] == "SystemExit"
+    assert end["error"]["line"] == SETUP_LINES + 3  # stopped inside wait()
+    assert "set_stop_button(Button.BLUETOOTH)" in end["error"]["kid_message"]
+
+
+def test_center_button_stops_the_robot_mid_drive(run):
+    result = run("drive_base.straight(1000)", buttons=[{"at": 500, "button": "CENTER"}])
+    assert result["end"]["error"]["type"] == "SystemExit"
+    x, _, _ = final_pose(result)
+    assert x - 1500 < 200  # stopped (and rolled a little), far short of 1000 mm
+
+
+def test_another_stop_button_frees_the_center_button(run):
+    result = run("""
+        from pybricks.parameters import Button
+        hub.system.set_stop_button(Button.BLUETOOTH)
+        while not hub.buttons.pressed():
+            wait(10)
+        print(hub.buttons.pressed())
+    """, buttons=[{"at": 1000, "button": "CENTER"}])
+    assert result["end"]["reason"] == "finished"
+    assert printed(result) == ["{Button.CENTER}"]
+
+
+def test_no_stop_button_and_button_combinations(run):
+    code = """
+        from pybricks.parameters import Button
+        hub.system.set_stop_button({stop})
+        wait(3000)
+        print("done")
+    """
+    presses = [{"at": 500, "button": "CENTER"}, {"at": 1000, "button": "LEFT"}, {"at": 2000, "button": "LEFT"},
+               {"at": 2050, "button": "RIGHT"}]
+    assert printed(run(code.format(stop="None"), buttons=presses)) == ["done"]
+    both = run(code.format(stop="(Button.LEFT, Button.RIGHT)"), buttons=presses)
+    assert both["end"]["t"] == pytest.approx(2050, abs=10)
+    assert "Button.LEFT + Button.RIGHT" in both["end"]["error"]["kid_message"]
+
+
+def test_set_stop_button_needs_buttons(run):
+    result = run("hub.system.set_stop_button('center')")
+    assert result["end"]["error"]["type"] == "TypeError"
+    assert "Button.BLUETOOTH" in result["end"]["error"]["kid_message"]
+
+
+def test_presses_after_the_program_ends_are_ignored(run):
+    result = run("""
+        drive_base.drive(300, 0)
+        wait(500)
+    """, buttons=[{"at": 600, "button": "CENTER"}])
+    assert result["end"]["reason"] == "finished"
 
 
 def test_sensor_noise_is_repeatable(run):

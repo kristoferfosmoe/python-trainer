@@ -20,6 +20,17 @@ blocks:
 
       To check for one particular button: `if Button.CENTER in hub.buttons.pressed():`
 
+      **One catch:** on a real hub, the center button is the **stop button**.
+      Pressing it ends your program right away, so it can't start a mission!
+      Pick a different stop button at the start of your program:
+
+      ```python
+      hub.system.set_stop_button(Button.BLUETOOTH)
+      ```
+
+      Now the center button is yours to use, and the Bluetooth button stops
+      the program. The simulator works the same way as a real hub.
+
   - type: quiz
     id: empty-false
     check: output
@@ -59,6 +70,7 @@ blocks:
       - {type: must_use, construct: def}
     hints:
       - "Make a function `wait_for_button()` with the `while not hub.buttons.pressed():` loop inside."
+      - "If the center button stops your program, keep the `set_stop_button(Button.BLUETOOTH)` line near the top."
       - "In the mission loop: first `wait_for_button()`, then `mission()`."
     starter: |
       from pybricks.hubs import PrimeHub
@@ -68,6 +80,7 @@ blocks:
       from pybricks.tools import wait
 
       hub = PrimeHub()
+      hub.system.set_stop_button(Button.BLUETOOTH)  # the center button starts missions
       left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
       right_motor = Motor(Port.B)
       drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
@@ -91,6 +104,7 @@ blocks:
       from pybricks.tools import wait
 
       hub = PrimeHub()
+      hub.system.set_stop_button(Button.BLUETOOTH)  # the center button starts missions
       left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
       right_motor = Motor(Port.B)
       drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)

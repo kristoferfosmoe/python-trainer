@@ -27,6 +27,26 @@ class StepLimit(SimStop):
     pass
 
 
+class StopButtonPressed(SimStop):
+    """Someone pressed the hub's stop button, which ends the program on a real hub."""
+
+    def __init__(self, buttons):
+        names = sorted(str(b) for b in buttons)
+        super().__init__(" + ".join(names))
+        if names == ["Button.CENTER"]:
+            self.kid_message = (
+                "The center button stopped your program. On a real hub, the center button is the "
+                "stop button: pressing it ends the program right away. To use the center button "
+                "in your program, pick a different stop button first, like "
+                "`hub.system.set_stop_button(Button.BLUETOOTH)`."
+            )
+        else:
+            self.kid_message = (
+                f"The stop button ({' + '.join(names)}) was pressed, so the program ended, "
+                "just like on a real hub."
+            )
+
+
 class ArgumentError(TypeError):
     def __init__(self, message, kid_message=None):
         super().__init__(message)
