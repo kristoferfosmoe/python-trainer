@@ -1,7 +1,7 @@
 // Sign up (username + PIN), sign in, and the account page.
 
 import { useState } from "react";
-import { navigate } from "../router";
+import { navigate, parseRoute, type Route } from "../router";
 import * as session from "../session";
 
 const AVATARS = ["🤖", "🦊", "🐼", "🐙", "🦄", "🐢", "🦖", "🐝", "🦉", "🐬", "🚀", "⚡"];
@@ -12,6 +12,14 @@ function pinProblem(pin: string): string | null {
   if ("0123456789012".includes(pin) || "9876543210987".includes(pin)) return "That PIN is too easy to guess (counting). Try mixing it up.";
   if (pin.slice(0, 3) === pin.slice(3) || pin.slice(0, 2).repeat(3) === pin) return "That PIN is too easy to guess (it repeats). Try mixing it up.";
   return null;
+}
+
+/**
+ * Go on to `to` after signing in, up or out, unless the student already went
+ * somewhere else while it was loading.
+ */
+function goOnFrom(from: Route["page"], to: Route) {
+  if (parseRoute(window.location.hash).page === from) navigate(to);
 }
 
 function useSubmit(action: () => Promise<void>) {
@@ -44,7 +52,7 @@ export function SignUpPage() {
     const problem = pinProblem(pin) ?? (pin !== pin2 ? "The two PINs don't match." : null);
     if (problem) throw new Error(problem);
     await session.signUp({ username: username.trim(), pin, display_name: displayName.trim(), avatar, join_code: joinCode.trim() });
-    navigate({ page: "map" });
+    goOnFrom("signup", { page: "map" });
   });
 
   return (
@@ -101,7 +109,7 @@ export function SignInPage() {
   const form = useSubmit(async () => {
     await session.signIn(username.trim(), secret);
     // Coaches start on their teams; students on the lessons.
-    navigate({ page: session.getSession().me?.kind === "adult" ? "teams" : "map" });
+    goOnFrom("signin", { page: session.getSession().me?.kind === "adult" ? "teams" : "map" });
   });
   return (
     <form className="card auth" onSubmit={form.submit}>
@@ -164,7 +172,7 @@ export function AccountPage() {
         className="secondary"
         onClick={async () => {
           await session.signOut();
-          navigate({ page: "map" });
+          goOnFrom("account", { page: "map" });
         }}
       >
         Sign out

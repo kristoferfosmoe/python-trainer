@@ -95,6 +95,7 @@ export async function signUp(page: Page, username = uniqueName()) {
   await page.getByLabel("Type your PIN again").fill(PIN);
   await page.getByRole("button", { name: "Sign up" }).click();
   await expect(page.locator(".account-chip")).toContainText(username);
+  await expect(page).not.toHaveURL(/#\/signup/); // signing up ends on the course map
   return username;
 }
 
@@ -106,6 +107,7 @@ export async function signIn(page: Page, username: string, secret: string) {
   await page.getByLabel(/PIN/).fill(secret);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.locator(".account-chip")).toBeVisible();
+  await expect(page).not.toHaveURL(/#\/signin/); // signing in ends on the map or the teams page
 }
 
 export async function signOut(page: Page) {

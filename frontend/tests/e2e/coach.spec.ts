@@ -96,6 +96,7 @@ test("students who sign up with the join code show up for the coach", async ({ p
   await page.getByLabel("Team code (optional)").fill(code!);
   await page.getByRole("button", { name: "Sign up" }).click();
   await expect(page.locator(".account-chip")).toContainText(username);
+  await expect(page).not.toHaveURL(/#\/signup/);
   await page.goto("/#/lesson/hello-python/2");
   await page.locator(".choice").nth(1).click();
   await expect(page.getByText("✔ Correct!")).toBeVisible();

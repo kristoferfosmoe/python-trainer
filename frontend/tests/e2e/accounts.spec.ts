@@ -75,3 +75,22 @@ test("the make-one-up button suggests a username", async ({ page }) => {
   await page.getByRole("button", { name: /Make one up/ }).click();
   await expect(page.getByLabel("Username")).toHaveValue(/^[A-Z][a-z]+[A-Z][a-z]+\d\d$/);
 });
+
+test("a slow sign-up doesn't pull the student away from the page they opened", async ({ page }) => {
+  await page.route("**/api/catalog", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await route.continue();
+  });
+  await page.goto("/#/signup");
+  const username = uniqueName();
+  await page.getByLabel("Username").fill(username);
+  await page.getByLabel("Make a 6-number PIN").fill(PIN);
+  await page.getByLabel("Type your PIN again").fill(PIN);
+  await page.getByRole("button", { name: "Sign up" }).click();
+  await expect(page.locator(".account-chip")).toContainText(username);
+  // Open a lesson while signing up is still loading the catalog.
+  await page.goto("/#/lesson/hello-python/2");
+  await page.waitForTimeout(3000);
+  await expect(page).toHaveURL(/#\/lesson\/hello-python\/2$/);
+  await expect(page.locator(".choice").first()).toBeVisible();
+});
