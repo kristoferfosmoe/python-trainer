@@ -40,6 +40,9 @@ export interface Dashboard {
   team: TeamInfo;
   role: Role | "staff";
   can_manage: boolean;
+  /** Everyone on the team: students, mentors and coaches. */
+  members: number;
+  max_members: number;
   students: StudentRow[];
   leaders: Person[];
 }

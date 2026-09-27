@@ -2,13 +2,17 @@ import secrets
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 
 from .robot import RobotError, clean_robot
 
 # No 0/O or 1/I, so codes are easy to read aloud and type.
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 CODE_LENGTH = 6
+
+
+class TeamFull(Exception):
+    """The team has settings.TEAM_MAX_MEMBERS members already."""
 
 
 def new_join_code():
@@ -47,6 +51,27 @@ class Team(models.Model):
     def __str__(self):
         return self.name
 
+    def room(self):
+        """How many more members the team can have (everyone counts: students, mentors, coaches)."""
+        return max(0, settings.TEAM_MAX_MEMBERS - self.memberships.count())
+
+    def lock(self):
+        """Inside a transaction: make changes to this team's members take turns,
+        so two people can't both take its last place."""
+        Team.objects.select_for_update().filter(pk=self.pk).first()
+
+    def add_member(self, user, role):
+        """Put `user` on the team (unless they're on it already) and return
+        their membership. Raises TeamFull."""
+        with transaction.atomic():
+            self.lock()
+            membership = self.memberships.filter(user=user).first()
+            if membership:
+                return membership
+            if self.room() == 0:
+                raise TeamFull()
+            return Membership.objects.create(user=user, team=self, role=role)
+
 
 class Membership(models.Model):
     class Role(models.TextChoices):
@@ -61,6 +86,14 @@ class Membership(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["user", "team"], name="one_membership_per_team")]
+
+    def clean(self):
+        # For the admin; the app uses Team.add_member.
+        if self._state.adding and self.team_id and self.team.room() == 0:
+            raise ValidationError(
+                f"{self.team} has {settings.TEAM_MAX_MEMBERS} members, the most a team can have. "
+                "Remove a member before adding another."
+            )
 
     def __str__(self):
         return f"{self.user} in {self.team} ({self.role})"

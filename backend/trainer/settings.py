@@ -163,6 +163,8 @@ LOGIN_IP_WINDOW_MINUTES = 15
 SIGNUP_MAX_PER_HOUR = 50
 JOIN_CODE_MAX_FAILURES = 40  # per 15 minutes
 ATTEMPTS_MAX_PER_HOUR = 600
+# Members of every role count: students, mentors and coaches.
+TEAM_MAX_MEMBERS = 100
 
 # Lessons saved in the admin are checked in a separate process: in production,
 # in the checker container, reached through this socket (see curriculum.library).
