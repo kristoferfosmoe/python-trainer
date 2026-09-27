@@ -281,9 +281,19 @@ Resources:
               StringEquals:
                 "token.actions.githubusercontent.com:aud": sts.amazonaws.com
               StringLike:
+                # GitHub writes the repository as owner/name, or (newer) with
+                # its ID numbers: owner@123/name@456. Accept either form.
                 "token.actions.githubusercontent.com:sub":
                   - !Sub repo:${GitHubRepository}:ref:refs/heads/${GitHubBranch}
                   - !Sub repo:${GitHubRepository}:environment:production
+                  - !Sub
+                    - repo:${Owner}@*/${Repo}@*:ref:refs/heads/${GitHubBranch}
+                    - Owner: !Select [0, !Split ["/", !Ref GitHubRepository]]
+                      Repo: !Select [1, !Split ["/", !Ref GitHubRepository]]
+                  - !Sub
+                    - repo:${Owner}@*/${Repo}@*:environment:production
+                    - Owner: !Select [0, !Split ["/", !Ref GitHubRepository]]
+                      Repo: !Select [1, !Split ["/", !Ref GitHubRepository]]
       Policies:
         - PolicyName: push-images
           PolicyDocument:

@@ -268,7 +268,7 @@ sudo docker compose restart web
 | Deploy: *"didn't come up"* and rolled back | The job's output shows the new version's logs. The previous version is running. |
 | Deploy succeeded, but *"doesn't answer with"* the new version | DNS doesn't point at the server yet, or HTTPS couldn't get a certificate: `sudo docker compose logs caddy`. |
 | The *Push images* and *Deploy* jobs are skipped | `DEPLOY_TO_AWS` isn't `true`, or it wasn't a push to `main`. |
-| GitHub: *"Not authorized to perform sts:AssumeRoleWithWebIdentity"* | AWS didn't accept who GitHub says the job is. The step *Show who GitHub says this job is* prints it: its `sub` must be `repo:<owner>/<repo>:ref:refs/heads/main` (or `…:environment:production` for *Deploy*), matching the stack's `GitHubRepository` and `GitHubBranch`. Also check `AWS_DEPLOY_ROLE_ARN`. |
+| GitHub: *"Not authorized to perform sts:AssumeRoleWithWebIdentity"* | AWS didn't accept who GitHub says the job is. The step *Show who GitHub says this job is* prints it: its `sub` must be `repo:<owner>/<repo>:ref:refs/heads/main` (or `…:environment:production` for *Deploy*; GitHub may add ID numbers, like `<owner>@123/<repo>@456`, which the stack accepts), matching the stack's `GitHubRepository` and `GitHubBranch`. Also check `AWS_DEPLOY_ROLE_ARN`. |
 | "Bad Request (400)" in the browser | The domain doesn't match `DJANGO_ALLOWED_HOSTS` in `/opt/python-trainer/deploy/.env`. Fix it and run `sudo docker compose up -d`. |
 | A student is locked out | Wait 5 minutes, or their coach unlocks them on the student's page. |
 | Python never starts in the browser | Some school networks block WebAssembly. Try another network and check the browser console. |
