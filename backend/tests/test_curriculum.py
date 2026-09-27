@@ -1,3 +1,4 @@
+import os
 import shutil
 
 import pytest
@@ -6,6 +7,7 @@ from django.core.management import CommandError, call_command
 from django.test import Client
 
 from accounts.models import User
+from curriculum import library
 from curriculum.admin import LessonForm, WorldForm
 from curriculum.models import Course, Lesson, PlaygroundChallenge, Unit, World
 from teams.models import Membership
@@ -161,6 +163,19 @@ blocks:
 """)
     assert not form.is_valid()
     assert "took too long" in " ".join(form.non_field_errors())
+
+
+@pytest.mark.skipif(not hasattr(os, "fork"), reason="needs POSIX resource limits")
+def test_checker_killed_by_its_cpu_limit_took_too_long(monkeypatch):
+    # The CPU limit is only a backstop, but if it stops the checker first
+    # the admin should still hear "too long", not "crashed".
+    def tight_limit():
+        import resource
+        resource.setrlimit(resource.RLIMIT_CPU, (1, 1))
+
+    monkeypatch.setattr(library, "_limit_resources", tight_limit)
+    lesson = {"slug": "spin", "blocks": [{"type": "example", "code": "total = sum(range(10 ** 12))"}]}
+    assert library.check_lesson(lesson) == [library.TOO_LONG]
 
 
 def test_admin_world_form_checks_the_world():

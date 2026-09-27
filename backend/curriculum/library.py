@@ -19,10 +19,15 @@ class DatabaseLibrary:
         self.playground_by_id = {c.slug: c.spec for c in PlaygroundChallenge.objects.all()}
 
 
+TOO_LONG = "Checking the lesson took too long. Is there a loop that never ends?"
+
+
 def _limit_resources():
     import resource
 
-    seconds = settings.LESSON_CHECK_TIMEOUT
+    # A backstop: the wall-clock timeout in check_lesson() should stop the
+    # checker first. If the CPU limit were the same, the two would race.
+    seconds = settings.LESSON_CHECK_TIMEOUT + 5
     resource.setrlimit(resource.RLIMIT_CPU, (seconds, seconds))
     memory = 1536 * 1024 * 1024
     resource.setrlimit(resource.RLIMIT_AS, (memory, memory))
@@ -54,7 +59,10 @@ def check_lesson(lesson, library=None, run=True):
             preexec_fn=_limit_resources if os.name == "posix" else None,
         )
     except subprocess.TimeoutExpired:
-        return ["Checking the lesson took too long. Is there a loop that never ends?"]
+        return [TOO_LONG]
+    if result.returncode < 0:
+        # Killed by a signal: the CPU limit above.
+        return [TOO_LONG]
     if result.returncode != 0:
         return [f"The lesson checker crashed: {result.stderr.strip()[-600:]}"]
     return json.loads(result.stdout)
