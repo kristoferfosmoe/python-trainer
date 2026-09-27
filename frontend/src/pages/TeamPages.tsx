@@ -2,6 +2,7 @@
 // student's work. Mentors see the same pages without the buttons that change things.
 
 import { useCallback, useEffect, useState } from "react";
+import { ApiError } from "../api";
 import * as coach from "../coach";
 import type { ChallengeWork, Dashboard, LoginCard, MemberDetail, StudentRow, TeamListing } from "../coach";
 import { CodeView } from "../components/CodeView";
@@ -475,8 +476,30 @@ export function MemberPage({ teamId, username }: { teamId: number; username: str
 function AccountActions({ data, onChange }: { data: MemberDetail; onChange: () => void }) {
   const { student, team } = data;
   const [card, setCard] = useState<LoginCard | null>(null);
+  const [askPassword, setAskPassword] = useState(false);
+  const [password, setPassword] = useState("");
   const action = useAction();
   const mentor = student.role === "mentor";
+
+  // Whoever has a new PIN can sign in as the student, so the server may ask
+  // the coach to type their password again first.
+  const makePin = async () => {
+    try {
+      setCard(await coach.newPin(team.id, student.username));
+    } catch (e) {
+      if (e instanceof ApiError && e.code === "password_needed") {
+        setAskPassword(true);
+        return;
+      }
+      throw e;
+    }
+    onChange();
+  };
+  const closePasswordCheck = () => {
+    setAskPassword(false);
+    setPassword("");
+  };
+
   return (
     <section className="card stack">
       <h2>🔑 Account</h2>
@@ -486,10 +509,7 @@ function AccountActions({ data, onChange }: { data: MemberDetail; onChange: () =
           disabled={action.busy}
           onClick={() => {
             if (!window.confirm(`Make a new PIN for ${student.display_name}? Their old PIN will stop working.`)) return;
-            void action.run(async () => {
-              setCard(await coach.newPin(team.id, student.username));
-              onChange();
-            });
+            void action.run(makePin);
           }}
         >
           🔑 Make a new PIN
@@ -524,6 +544,27 @@ function AccountActions({ data, onChange }: { data: MemberDetail; onChange: () =
           Remove from team
         </button>
       </div>
+      {askPassword && (
+        <form
+          className="password-check"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void action.run(async () => {
+              await coach.confirmPassword(password);
+              closePasswordCheck();
+              await makePin();
+            });
+          }}
+        >
+          <p>🔒 For safety, type your password to make {student.display_name} a new PIN.</p>
+          <div className="row wrap">
+            <input type="password" aria-label="Your password" placeholder="Your password" autoComplete="current-password"
+              value={password} onChange={(e) => setPassword(e.target.value)} required autoFocus />
+            <button className="primary" disabled={action.busy}>Make the new PIN</button>
+            <button type="button" className="secondary" onClick={closePasswordCheck}>Cancel</button>
+          </div>
+        </form>
+      )}
       {action.error && <p className="form-error" role="alert">{action.error}</p>}
       {card && <LoginCards cards={[card]} teamName={team.name} />}
     </section>

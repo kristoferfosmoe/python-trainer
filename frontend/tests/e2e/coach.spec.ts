@@ -67,7 +67,13 @@ test("a coach makes accounts, sets up the robot and sees a student's work", asyn
   await work.locator("summary").click();
   await expect(work.getByRole("textbox").first()).toContainText("drive_base.straight(930)");
 
+  // A new PIN lets whoever has it sign in as Rita, so the coach types their password first.
   await page.getByRole("button", { name: "🔑 Make a new PIN" }).click();
+  await page.getByLabel("Your password").fill("not the password");
+  await page.getByRole("button", { name: "Make the new PIN" }).click();
+  await expect(page.getByRole("alert")).toContainText("isn't right");
+  await page.getByLabel("Your password").fill(COACH.password);
+  await page.getByRole("button", { name: "Make the new PIN" }).click();
   await expect(page.getByTestId("card-pin")).toHaveCount(1);
   const newPin = await page.getByTestId("card-pin").textContent();
   expect(newPin).not.toBe(pin);

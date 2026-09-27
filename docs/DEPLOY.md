@@ -292,6 +292,9 @@ sudo docker compose restart web
   edit lessons can't use lesson code to reach the database or the secret key.
 - **The admin's sign-in** (`/admin/login/`) has the same lockouts as the
   app's, so it isn't an easier place to guess passwords.
+- **Coaches and admins are signed out** after 2 hours without use and 12
+  hours after signing in (students stay signed in for a month), and coaches
+  type their password again before making a student a new PIN.
 - Ubuntu installs security updates by itself (`unattended-upgrades`). Each
   deploy builds on the newest Python and Caddy base images, and ECR scans
   every image (see the findings in the ECR console). The PostgreSQL image is

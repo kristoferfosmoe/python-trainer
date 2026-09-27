@@ -6,6 +6,7 @@ from accounts.models import User
 from teams.models import Membership, Team
 
 PIN = "314159"
+COACH_PASSWORD = "a long coach password"
 
 
 @pytest.fixture(scope="session")
@@ -46,7 +47,7 @@ def team(db):
 
 @pytest.fixture
 def coach(team):
-    user = make_user("coach_kim", kind=User.Kind.ADULT, secret="a long coach password")
+    user = make_user("coach_kim", kind=User.Kind.ADULT, secret=COACH_PASSWORD)
     Membership.objects.create(user=user, team=team, role=Membership.Role.COACH)
     return user
 

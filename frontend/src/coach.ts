@@ -86,6 +86,8 @@ export const changeTeam = (id: number, change: { name?: string; season?: string;
 export const newJoinCode = (id: number) => api<TeamInfo>(`${team(id)}/join-code`, { method: "POST" });
 export const loadMember = (id: number, username: string) => api<MemberDetail>(member(id, username));
 export const newPin = (id: number, username: string) => api<LoginCard>(`${member(id, username)}/pin`, { method: "POST" });
+/** Type your password again, before a new PIN (the server asks with code "password_needed"). */
+export const confirmPassword = (secret: string) => api("/auth/confirm", { method: "POST", body: { secret } });
 export const unlock = (id: number, username: string) => api(`${member(id, username)}/unlock`, { method: "POST" });
 export const setRole = (id: number, username: string, role: "student" | "mentor") =>
   api(member(id, username), { method: "PATCH", body: { role } });

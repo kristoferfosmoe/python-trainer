@@ -4,14 +4,16 @@ from django.contrib.auth import login, logout
 from django.db import IntegrityError, transaction
 from ninja import Router, Schema
 from ninja.errors import HttpError
+from ninja.security import django_auth
 from ninja.utils import check_csrf
 
 from teams.models import Membership, Team
 
 from . import limits
-from .auth import SignInError, sign_in
+from .auth import SignInError, check_credentials, sign_in
 from .models import AVATARS, User
 from .pins import pin_problem, suggest_username, username_problem
+from .sessions import password_confirmed
 
 router = Router(tags=["auth"])
 
@@ -126,6 +128,24 @@ def logout_view(request):
     require_csrf(request)
     logout(request)
     return {"user": None}
+
+
+class ConfirmIn(Schema):
+    secret: str
+
+
+@router.post("/confirm", auth=django_auth)
+def confirm_password(request, data: ConfirmIn):
+    """Type your password again, before something like making a new PIN.
+    Wrong passwords count toward the same lockout as signing in."""
+    try:
+        check_credentials(request, request.user.username, data.secret)
+    except SignInError as error:
+        if error.status == 429:
+            raise HttpError(429, str(error))
+        raise HttpError(400, "That password isn't right.")
+    password_confirmed(request)
+    return {"ok": True}
 
 
 @router.get("/me", response=MeResponse)

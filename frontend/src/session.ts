@@ -42,12 +42,14 @@ interface Saved {
 export interface SessionState extends Saved {
   me: Me | null;
   unsaved: boolean; // a save to the server failed; we'll retry
+  /** Still signed in from an earlier visit. On a shared computer, that might be someone else. */
+  restored: boolean;
 }
 
 const GUEST_KEY = "guest:v1";
 const EMPTY: Saved = { lessons: {}, solved: [], drafts: {} };
 const listeners = new Set<() => void>();
-let state: SessionState = { ...EMPTY, me: null, unsaved: false };
+let state: SessionState = { ...EMPTY, me: null, unsaved: false, restored: false };
 
 function set(change: Partial<SessionState>) {
   state = { ...state, ...change };
@@ -158,9 +160,14 @@ async function flushSaves() {
 
 export async function initSession() {
   const { user } = await api<{ user: Me | null }>("/auth/me");
-  if (user) await loadAccount(user);
-  else set({ ...readGuest(), me: null });
+  if (user) {
+    await loadAccount(user);
+    set({ restored: true });
+  } else set({ ...readGuest(), me: null });
 }
+
+/** The "Not you?" note has been seen. */
+export const dismissRestored = () => set({ restored: false });
 
 async function loadAccount(user: Me) {
   const saved = await api<Saved>("/me/state");
@@ -174,6 +181,7 @@ async function afterSignIn(user: Me) {
     clearGuest();
   }
   await loadAccount(user);
+  set({ restored: false });
   await loadCatalog(); // solutions and team courses depend on who's signed in
 }
 
@@ -198,7 +206,7 @@ export async function signIn(username: string, secret: string) {
 export async function signOut() {
   await flushSaves(); // so nothing the student just did is lost
   await api("/auth/logout", { method: "POST" });
-  set({ ...readGuest(), me: null, unsaved: false });
+  set({ ...readGuest(), me: null, unsaved: false, restored: false });
   await loadCatalog();
 }
 

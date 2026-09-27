@@ -676,7 +676,14 @@ See **[DEPLOY.md](DEPLOY.md)** for the step-by-step guide. In short:
   - Adults use full passwords (at least 10 characters, checked by Django's
     validators).
   - A coach (on the team page) or an admin can give a student a new PIN, or
-    unlock the account.
+    unlock the account. A new PIN lets whoever has it sign in as the
+    student, so the coach types their password again first (it's good for
+    15 minutes).
+- **Staying signed in**: students stay signed in for a month on their own
+  laptop. Coaches and admins can do much more, and school computers are
+  shared, so their sessions end after 2 hours without use and 12 hours
+  after signing in (`accounts.sessions`). When someone opens the app still
+  signed in from an earlier visit, a note asks "Not you? Switch account".
 - Collect as little as possible. Students get a username, a display name and
   a preset avatar, with no free-text profile.
 - Student code and attempts are visible only to the student and to their

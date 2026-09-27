@@ -4,6 +4,8 @@ export class ApiError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    /** A reason the app acts on, e.g. "password_needed". */
+    readonly code?: string,
   ) {
     super(message);
   }
@@ -37,13 +39,14 @@ export async function api<T>(path: string, options: { method?: string; body?: un
     throw new ApiError(0, "Can't reach the Python Trainer server. Check your internet connection.");
   }
   if (!response.ok) {
-    let detail: unknown;
+    let body: { detail?: unknown; code?: unknown } = {};
     try {
-      detail = ((await response.json()) as { detail?: unknown }).detail;
+      body = (await response.json()) as typeof body;
     } catch {
       // not JSON
     }
-    throw new ApiError(response.status, typeof detail === "string" ? detail : `Something went wrong (error ${response.status}).`);
+    const message = typeof body.detail === "string" ? body.detail : `Something went wrong (error ${response.status}).`;
+    throw new ApiError(response.status, message, typeof body.code === "string" ? body.code : undefined);
   }
   return (await response.json()) as T;
 }

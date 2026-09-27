@@ -60,6 +60,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "accounts.sessions.AdultSessionMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -99,6 +100,10 @@ else:
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": os.environ.get("DJANGO_SQLITE_PATH", BASE_DIR / "db.sqlite3"),
+            # Sign-ins read and then update an account in one transaction
+            # (accounts.auth). IMMEDIATE makes SQLite wait its turn when another
+            # request is writing, instead of failing with "database is locked".
+            "OPTIONS": {"transaction_mode": "IMMEDIATE", "timeout": 20},
         }
     }
 
@@ -130,8 +135,13 @@ STORAGES = {
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Kids stay signed in for a month on their own laptop.
+# Kids stay signed in for a month on their own laptop. Coaches and admins,
+# who can do much more, are signed out sooner (accounts.sessions), and type
+# their password again before making a student a new PIN.
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 30
+ADULT_SESSION_HOURS = 12
+ADULT_IDLE_MINUTES = 120
+PASSWORD_CONFIRM_MINUTES = 15
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
 
