@@ -19,9 +19,13 @@ Metadata:
 Parameters:
   DomainName:
     Type: String
-    Description: The site's address, e.g. trainer.yourteam.org (no https://).
-    AllowedPattern: "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$"
-    ConstraintDescription: a lowercase domain name like trainer.yourteam.org
+    Default: ""
+    Description: >-
+      The site's address, e.g. trainer.yourteam.org (no https://). Leave empty to
+      use the server's IP with plain HTTP for now (no HTTPS, so only for trying
+      things out); add a domain later with deploy/set-address.sh.
+    AllowedPattern: "^$|^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$"
+    ConstraintDescription: empty, or a lowercase domain name like trainer.yourteam.org
   HostedZoneId:
     Type: String
     Default: ""
@@ -71,7 +75,8 @@ Parameters:
     Description: Used in resource names (lowercase).
 
 Conditions:
-  UseRoute53: !Not [!Equals [!Ref HostedZoneId, ""]]
+  HasDomain: !Not [!Equals [!Ref DomainName, ""]]
+  UseRoute53: !And [!Condition HasDomain, !Not [!Equals [!Ref HostedZoneId, ""]]]
   UseKeyPair: !Not [!Equals [!Ref SshKeyName, ""]]
   AllowSsh: !Not [!Equals [!Ref SshAllowedCidr, ""]]
   CreateOidcProvider: !Equals [!Ref GitHubOidcProviderArn, ""]
@@ -313,7 +318,8 @@ Resources:
 
 Outputs:
   SiteUrl:
-    Value: !Sub https://${DomainName}
+    Description: "GitHub variable SITE_URL"
+    Value: !If [HasDomain, !Sub "https://${DomainName}", !Sub "http://${ServerAddress}"]
   ServerIp:
     Description: Point the domain's DNS A record here (unless the stack did it with Route 53).
     Value: !Ref ServerAddress

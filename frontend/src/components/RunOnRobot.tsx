@@ -22,10 +22,17 @@ export function RunOnRobot({ code, onClose }: { code: string; onClose: () => voi
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(result.code);
+      // The clipboard API needs HTTPS; the old way also works on plain HTTP.
+      if (navigator.clipboard) await navigator.clipboard.writeText(result.code);
+      else copyTheOldWay(result.code, dialog.current!);
       setCopied("yes");
     } catch {
-      setCopied("failed");
+      try {
+        copyTheOldWay(result.code, dialog.current!);
+        setCopied("yes");
+      } catch {
+        setCopied("failed");
+      }
     }
   };
 
@@ -99,4 +106,18 @@ export function RunOnRobot({ code, onClose }: { code: string; onClose: () => voi
       </section>
     </dialog>
   );
+}
+
+/** Copy through a hidden text box. It goes inside the dialog, because the rest of the page is inert while it's open. */
+function copyTheOldWay(text: string, container: HTMLElement) {
+  const box = document.createElement("textarea");
+  box.value = text;
+  box.setAttribute("readonly", "");
+  box.style.position = "fixed";
+  box.style.opacity = "0";
+  container.appendChild(box);
+  box.select();
+  const ok = document.execCommand("copy");
+  box.remove();
+  if (!ok) throw new Error("copy failed");
 }

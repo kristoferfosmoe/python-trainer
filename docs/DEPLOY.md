@@ -29,9 +29,10 @@ merge to main ──▶ GitHub Actions: all tests pass
 Everything on the AWS side comes from one CloudFormation template,
 [`deploy/aws/python-trainer.yml`](../deploy/aws/python-trainer.yml).
 
-**You need:** an AWS account you can create IAM roles in, a domain name you
-can add a DNS record to (like `trainer.yourteam.org`), and admin access to
-the GitHub repository.
+**You need:** an AWS account you can create IAM roles in, and admin access
+to the GitHub repository. A domain name you can add a DNS record to (like
+`trainer.yourteam.org`) gives you HTTPS; without one, see
+[No domain yet?](#no-domain-yet-use-the-servers-ip).
 
 ---
 
@@ -85,6 +86,8 @@ backups. It doesn't start the site yet; the first deploy does.
 
 ## 2. Point your domain at the server
 
+(No domain? Skip this step.)
+
 At your domain's DNS provider, add an **A record** for your domain (for
 example `trainer` in the `yourteam.org` zone) with the **ServerIp** from the
 table. Wait until `nslookup trainer.yourteam.org` shows that IP. (If you
@@ -106,7 +109,7 @@ In the GitHub repository:
    | `AWS_DEPLOY_ROLE_ARN` | **DeployRoleArn** |
    | `EC2_INSTANCE_ID` | **InstanceId** |
    | `IMAGE_REPO` | **ImageRepository** |
-   | `SITE_URL` | **SiteUrl**, e.g. `https://trainer.yourteam.org` |
+   | `SITE_URL` | **SiteUrl**, e.g. `https://trainer.yourteam.org` (or `http://<the server's IP>` without a domain) |
    | `DEPLOY_TO_AWS` | `true` |
 
 3. **Settings → Environments → New environment** named `production`. Under
@@ -142,6 +145,28 @@ Pick strong passwords (at least 10 characters). The admin is at
 `https://trainer.yourteam.org/admin/`. Coaches sign in on the site and use
 **👥 Teams** for everything else: progress, student accounts and sign-in
 cards, new PINs, mentors, and the team's robot.
+
+## No domain yet? Use the server's IP
+
+You can start without a domain: leave out `DomainName=` in step 1, skip
+step 2, and use the **SiteUrl** output, `http://<the server's IP>`, as
+`SITE_URL`. Caddy then serves the site over plain HTTP.
+
+⚠️ Without a domain there's **no HTTPS**, so PINs and passwords cross the
+network unencrypted. That's fine for trying the site out, not for real
+students on school Wi-Fi. (Everything else works, including running Python
+and copying code for Pybricks.)
+
+**Adding a domain later** (or switching a server that was set up with one to
+the IP), in a Session Manager shell:
+
+```bash
+sudo /opt/python-trainer/deploy/set-address.sh trainer.yourteam.org   # HTTPS on a domain
+sudo /opt/python-trainer/deploy/set-address.sh                        # plain HTTP on the IP
+```
+
+Point the domain's A record at the server first. The script restarts the
+site and prints the new address; put it in the GitHub variable `SITE_URL`.
 
 ---
 
@@ -243,7 +268,7 @@ sudo docker compose restart web
 | Deploy: *"didn't come up"* and rolled back | The job's output shows the new version's logs. The previous version is running. |
 | Deploy succeeded, but *"doesn't answer with"* the new version | DNS doesn't point at the server yet, or HTTPS couldn't get a certificate: `sudo docker compose logs caddy`. |
 | The *Push images* and *Deploy* jobs are skipped | `DEPLOY_TO_AWS` isn't `true`, or it wasn't a push to `main`. |
-| GitHub: *"Not authorized to perform sts:AssumeRoleWithWebIdentity"* | `AWS_DEPLOY_ROLE_ARN` is wrong, the repository name differs from the stack's `GitHubRepository`, or the `production` environment allows other branches. |
+| GitHub: *"Not authorized to perform sts:AssumeRoleWithWebIdentity"* | AWS didn't accept who GitHub says the job is. The step *Show who GitHub says this job is* prints it: its `sub` must be `repo:<owner>/<repo>:ref:refs/heads/main` (or `…:environment:production` for *Deploy*), matching the stack's `GitHubRepository` and `GitHubBranch`. Also check `AWS_DEPLOY_ROLE_ARN`. |
 | "Bad Request (400)" in the browser | The domain doesn't match `DJANGO_ALLOWED_HOSTS` in `/opt/python-trainer/deploy/.env`. Fix it and run `sudo docker compose up -d`. |
 | A student is locked out | Wait 5 minutes, or their coach unlocks them on the student's page. |
 | Python never starts in the browser | Some school networks block WebAssembly. Try another network and check the browser console. |

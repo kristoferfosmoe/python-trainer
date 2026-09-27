@@ -3,8 +3,8 @@
 # user data (deploy/aws/python-trainer.yml). Safe to run again:
 #   sudo /opt/python-trainer/deploy/aws/bootstrap.sh
 #
-# Reads /etc/python-trainer.env (written by the user data): DOMAIN,
-# IMAGE_REPO, BACKUP_S3_URI, REPO_URL, BRANCH.
+# Reads /etc/python-trainer.env (written by the user data): DOMAIN (empty
+# for plain HTTP on the server's IP), IMAGE_REPO, BACKUP_S3_URI, REPO_URL, BRANCH.
 #
 # Installs Docker, the AWS CLI and a swap file, writes deploy/.env with new
 # random secrets (they never leave this server), and schedules nightly
@@ -14,7 +14,7 @@ set -euxo pipefail
 
 # shellcheck source=/dev/null
 . /etc/python-trainer.env
-: "${DOMAIN:?}" "${IMAGE_REPO:?}" "${REPO_URL:?}" "${BRANCH:=main}" "${BACKUP_S3_URI:=}"
+: "${DOMAIN:=}" "${IMAGE_REPO:?}" "${REPO_URL:?}" "${BRANCH:=main}" "${BACKUP_S3_URI:=}"
 APP=/opt/python-trainer
 export DEBIAN_FRONTEND=noninteractive
 
@@ -58,10 +58,8 @@ if [ ! -f "$APP/deploy/.env" ]; then
     umask 077
     cat > "$APP/deploy/.env" <<EOF
 # Made by deploy/aws/bootstrap.sh. The secrets were generated on this server.
-DOMAIN=$DOMAIN
+# The address settings (DOMAIN and friends) come from deploy/set-address.sh.
 DJANGO_SECRET_KEY=$(openssl rand -hex 32)
-DJANGO_ALLOWED_HOSTS=$DOMAIN
-DJANGO_CSRF_TRUSTED_ORIGINS=https://$DOMAIN
 POSTGRES_DB=trainer
 POSTGRES_USER=trainer
 POSTGRES_PASSWORD=$(openssl rand -hex 24)
@@ -73,6 +71,7 @@ IMAGE_REPO=$IMAGE_REPO
 IMAGE_TAG=
 EOF
     umask 022
+    "$APP/deploy/set-address.sh" "$DOMAIN"
 fi
 
 # --- Nightly backups to S3 at 03:15 UTC ---------------------------------------------------
