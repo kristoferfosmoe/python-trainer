@@ -1,0 +1,13 @@
+# A long lane with a target at the end, for gyro practice.
+id: straight-lane
+name: Straight Lane
+size: [2362, 1143]
+background: white
+grid: 100
+start: {x: 200, y: 570, heading: 0}
+shapes:
+  - {type: line, points: [[0, 440], [2362, 440]], width: 8, color: gray}
+  - {type: line, points: [[0, 700], [2362, 700]], width: 8, color: gray}
+  - {type: rect, x: 1700, y: 490, w: 200, h: 160, color: yellow}
+zones:
+  - {id: target, label: Target, type: rect, x: 1700, y: 490, w: 200, h: 160}

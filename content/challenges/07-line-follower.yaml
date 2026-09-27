@@ -1,0 +1,64 @@
+id: line-follower
+title: Line Follower
+world: line-track
+time_limit: 90
+summary: Follow the black line all the way around the track.
+instructions: |
+  The color sensor starts right on the **edge** of the black line. On the edge
+  it reads about 50: half black, half white.
+
+  - If it reads **more** than 50, the sensor sees more white, so steer toward the line (turn right).
+  - If it reads **less** than 50, it sees more black, so steer away (turn left).
+
+  Steering *harder* when you're *farther* off is called **proportional
+  control**. It's one of the most useful tricks in robotics:
+
+  ```python
+  error = line_sensor.reflection() - 50
+  drive_base.drive(150, gain * error)
+  ```
+
+  Go around the track, past the right curve, the top, and the left curve,
+  and back to the finish.
+goals:
+  - {type: visit_zones, zones: [cp-right, cp-top, cp-left, finish], in_order: true}
+hints:
+  - Put the two lines above inside a `while` loop so they repeat.
+  - "Start with `gain = 1`. If the robot wiggles a lot, make it smaller. If it loses the line on curves, make it bigger."
+  - "A `StopWatch` can stop the loop after one lap: `while watch.time() < 32000:`"
+starter: |
+  from pybricks.pupdevices import Motor, ColorSensor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+  from pybricks.tools import wait, StopWatch
+
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  line_sensor = ColorSensor(Port.C)
+
+  target = 50
+  gain = 1
+  watch = StopWatch()
+
+  error = line_sensor.reflection() - target
+  print("error:", error)
+solution: |
+  from pybricks.pupdevices import Motor, ColorSensor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+  from pybricks.tools import wait, StopWatch
+
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  line_sensor = ColorSensor(Port.C)
+
+  target = 50
+  gain = 1.5
+  watch = StopWatch()
+
+  while watch.time() < 34000:
+      error = line_sensor.reflection() - target
+      drive_base.drive(150, gain * error)
+  drive_base.stop()

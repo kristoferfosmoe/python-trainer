@@ -1,0 +1,37 @@
+id: first-drive
+title: First Drive
+world: practice-field
+time_limit: 30
+summary: Drive out of home base and park in the green garage.
+instructions: |
+  The robot starts in **home base**. Park it inside the **green garage**.
+
+  `drive_base.straight(300)` drives forward 300 millimeters (mm).
+  1000 mm is 1 meter, a bit more than 3 feet.
+
+  How far away is the garage? Look at the grid: each square is 100 mm.
+goals:
+  - {type: end_in_zone, zone: garage}
+hints:
+  - The middle of the robot starts at 200 mm from the left edge. The garage goes from 1000 mm to 1260 mm.
+  - "Try a number between 800 and 1050: `drive_base.straight(900)`"
+starter: |
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+  drive_base.straight(300)
+solution: |
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+  drive_base.straight(930)

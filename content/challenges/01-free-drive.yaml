@@ -1,0 +1,30 @@
+id: free-drive
+title: Free Drive
+world: practice-field
+summary: No goals. Try anything and watch what happens!
+instructions: |
+  This is your robot's playground. Change the code, press **Run**, and watch
+  the robot. Some ideas:
+
+  - Drive to the green garage.
+  - Make the hub beep or show your name.
+  - Bump into the crate (what happens?).
+starter: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor, ColorSensor, UltrasonicSensor
+  from pybricks.parameters import Port, Direction, Color
+  from pybricks.robotics import DriveBase
+  from pybricks.tools import wait
+
+  hub = PrimeHub()
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+  hub.light.on(Color.GREEN)
+  hub.speaker.beep()
+
+  drive_base.straight(400)
+  drive_base.turn(90)
+  drive_base.straight(-100)
+  hub.display.text("Hi!")

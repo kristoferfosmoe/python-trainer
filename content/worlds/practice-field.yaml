@@ -1,0 +1,31 @@
+# Practice field: FLL table size. Origin is the bottom-left corner,
+# x to the right, y up. Headings: 0 faces right, 90 faces down (clockwise).
+id: practice-field
+name: Practice Field
+size: [2362, 1143]
+background: white
+grid: 100
+start: {x: 200, y: 200, heading: 0}
+shapes:
+  # Garage for "First Drive"
+  - {type: rect, x: 1000, y: 70, w: 260, h: 260, color: green}
+  # Targets for "Square Dance"
+  - {type: circle, x: 650, y: 1000, r: 35, color: yellow}
+  - {type: circle, x: 650, y: 600, r: 35, color: yellow}
+  - {type: circle, x: 250, y: 600, r: 35, color: yellow}
+  # The black line for "Stop at the Line"
+  - {type: line, points: [[1500, 560], [1500, 1100]], width: 20, color: black}
+  # Parking strip for "Wall Stopper"
+  - {type: rect, x: 2060, y: 740, w: 180, h: 180, color: orange}
+zones:
+  - {id: base, label: Home base, type: rect, x: 0, y: 0, w: 450, h: 450}
+  - {id: garage, label: Garage, type: rect, x: 1000, y: 70, w: 260, h: 260}
+  - {id: corner-1, label: "1", type: circle, x: 650, y: 1000, r: 70}
+  - {id: corner-2, label: "2", type: circle, x: 650, y: 600, r: 70}
+  - {id: corner-3, label: "3", type: circle, x: 250, y: 600, r: 70}
+  - {id: corner-home, label: Start, type: circle, x: 250, y: 1000, r: 70}
+  - {id: at-line, label: Line stop, type: rect, x: 1330, y: 740, w: 150, h: 180}
+  - {id: near-wall, label: Parking strip, type: rect, x: 2060, y: 740, w: 180, h: 180}
+obstacles:
+  - {label: crate, type: rect, x: 1850, y: 90, w: 140, h: 140}
+  - {label: tree, type: circle, x: 2180, y: 400, r: 70}

@@ -1,0 +1,40 @@
+id: straight-as-an-arrow
+title: Straight as an Arrow
+world: straight-lane
+realism: on
+time_limit: 30
+summary: Real robots drift. Use the gyro to drive perfectly straight.
+instructions: |
+  In this challenge the robot acts like a **real** robot: one wheel is a tiny
+  bit smaller than the other, and the wheels slip a little.
+
+  Run the starter code first. Does the robot reach the yellow target?
+
+  The hub has a **gyro** sensor that knows which way the robot is pointing.
+  Tell the drive base to use it, and it will correct itself as it drives.
+goals:
+  - {type: end_in_zone, zone: target}
+hints:
+  - Watch the robot's path. Which way does it curve?
+  - "Add `drive_base.use_gyro(True)` before driving."
+starter: |
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+  drive_base.straight(1600)
+solution: |
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+  drive_base.use_gyro(True)
+  drive_base.straight(1600)

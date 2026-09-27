@@ -1,0 +1,16 @@
+[project]
+name = "trainer-sim"
+version = "0.1.0"
+description = "Pybricks-compatible robot simulator for the Python Trainer"
+requires-python = ">=3.11"
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest>=8", "pyyaml>=6"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.uv]
+package = false

@@ -1,0 +1,45 @@
+id: wall-stopper
+title: Wall Stopper
+world: practice-field
+start: {x: 1750, y: 830, heading: 0}
+time_limit: 30
+summary: Use the distance sensor to park on the orange strip without touching the wall.
+instructions: |
+  The ultrasonic sensor on the front of the robot measures the distance to
+  whatever is ahead, in millimeters. `eyes.distance()` gives that number.
+
+  Drive toward the wall and stop on the **orange parking strip**, without
+  touching the wall.
+goals:
+  - {type: end_in_zone, zone: near-wall}
+  - {type: no_collisions}
+hints:
+  - Print `eyes.distance()` to see what the sensor measures.
+  - "Stop when the distance is less than about 100: `while eyes.distance() > 100:`"
+starter: |
+  from pybricks.pupdevices import Motor, UltrasonicSensor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+  from pybricks.tools import wait
+
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  eyes = UltrasonicSensor(Port.D)
+
+  print("Distance to the wall:", eyes.distance(), "mm")
+solution: |
+  from pybricks.pupdevices import Motor, UltrasonicSensor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+  from pybricks.tools import wait
+
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  eyes = UltrasonicSensor(Port.D)
+
+  drive_base.drive(200, 0)
+  while eyes.distance() > 100:
+      wait(10)
+  drive_base.stop()

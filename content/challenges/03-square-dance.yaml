@@ -1,0 +1,50 @@
+id: square-dance
+title: Square Dance
+world: practice-field
+start: {x: 250, y: 1000, heading: 0}
+time_limit: 60
+summary: Drive a square through the yellow dots, using a loop.
+instructions: |
+  Drive a square: through dot **1**, dot **2**, dot **3**, and back to the
+  start. Each side is 400 mm long.
+
+  You *could* write `straight` and `turn` four times each, but programmers
+  hate repeating themselves. Use a `for` loop so `straight()` only appears
+  **once** in your code:
+
+  ```python
+  for side in range(4):
+      # these indented lines repeat 4 times
+  ```
+goals:
+  - {type: visit_zones, zones: [corner-1, corner-2, corner-3, corner-home], in_order: true}
+  - {type: must_use, construct: for}
+  - {type: max_calls, name: straight, value: 1}
+hints:
+  - "`drive_base.turn(90)` turns right. `drive_base.turn(-90)` turns left."
+  - The lines inside the loop must be indented by 4 spaces.
+  - "Inside the loop you need two lines: `drive_base.straight(400)` and `drive_base.turn(90)`."
+starter: |
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+  for side in range(4):
+      print("Driving side", side)
+solution: |
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+  for side in range(4):
+      print("Driving side", side)
+      drive_base.straight(400)
+      drive_base.turn(90)

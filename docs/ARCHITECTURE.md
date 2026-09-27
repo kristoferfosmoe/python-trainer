@@ -1,12 +1,12 @@
-# Python Trainer: Architecture (Draft v0.1)
+# Python Trainer: Architecture (v0.2)
 
 A website that teaches FIRST LEGO League (FLL) Challenge students to program
 their robot in Python with the [Pybricks](https://pybricks.com) API. The
 centerpiece is a robot simulator in the browser: students write real Pybricks
 code and watch a virtual robot drive on a virtual FLL table.
 
-This document records the architecture decisions made before building
-features. Open questions are at the end.
+This document records the architecture decisions. The decision log at the
+end lists what was settled and when.
 
 ---
 
@@ -65,133 +65,203 @@ inside a WebAssembly Python runtime (Pyodide).
 
 ### 4.1 Run first, then replay
 
-1. The student clicks **Run**. The UI sends `{code, world, robot, limits}` to
-   the Web Worker.
-2. The worker resets the simulated world and turns on a line tracer
-   (`sys.settrace`) that records which line runs, at what simulated time, and
-   the values of simple variables. Then it runs the student's code.
-3. Blocking Pybricks calls such as `drive_base.straight(300)` or `wait(500)`
-   move a **virtual clock** forward. The simulator steps the robot's motion in
-   fixed 10 ms steps and records the robot's pose at each step. Nothing waits
-   in real time, so a 2½-minute match takes milliseconds to compute.
+1. The student clicks **Run**. The UI sends `{code, world, robot, options,
+   goals}` to the Web Worker.
+2. The worker starts a fresh simulation and turns on a line tracer
+   (`sys.settrace`) for the student's file only. Then it runs the student's
+   code.
+3. Time is **virtual**:
+   - Blocking Pybricks calls such as `drive_base.straight(300)` or
+     `wait(500)` move the clock forward.
+   - **Every line of student code costs 0.25 ms**, like a real hub running a
+     loop, so `while sensor.reflection() > 50: pass` still lets the robot
+     move.
+   - The physics runs in fixed **5 ms ticks**, and sensors update once per
+     tick.
+   - Nothing waits in real time. A 34-second line-following run (136,000
+     lines of Python) simulates in about 1.6 s in Chromium.
 4. Sensor calls read the world at the robot's current pose.
-5. The run ends when the program finishes, raises an error, reaches the time
-   limit (default 150 s, the length of a match), or reaches the step limit
-   (which catches `while True: pass`).
+5. The run ends in one of these ways:
+   - The program finishes (or calls `raise SystemExit`).
+   - It raises an error.
+   - It reaches the time limit (default 150 s, the length of a match).
+   - It reaches the line limit (a safety net).
+
+   The limits raise a `BaseException`, so a student's `except Exception:`
+   can't swallow them.
 6. The worker returns a **trace**. The UI plays it back at real speed (or
-   faster or slower), highlighting code lines and showing the console and
-   variables in sync with the robot.
-7. The UI checks the challenge goals against the trace and saves the attempt
-   to the server.
+   faster or slower) with a scrubber. It highlights the running line and
+   shows the console, the variables and the sensor readings in sync with the
+   robot.
+7. Goals are checked by the simulator and returned in the trace. The UI
+   reveals them when playback reaches the end. From milestone 3, it also
+   saves the attempt to the server.
 
-If the worker doesn't respond within a wall-clock limit, the UI stops it and
-starts a new one.
+If the worker doesn't respond within 20 s of wall-clock time, the UI stops it
+and starts a new one.
 
-### 4.2 Python package layout (`sim/`)
+### 4.2 Python package layout (`sim/src/`)
 
-The simulator installs modules with the **same names as real Pybricks**, so
+The simulator provides modules with the **same names as real Pybricks**, so
 code copied from the site runs on a real hub:
 
 ```
-sim/
-  pybricks/            # fake Pybricks API that students import
+sim/src/
+  pybricks/            # simulated Pybricks API that students import
     hubs.py            # PrimeHub: imu, display, light, speaker, buttons
     pupdevices.py      # Motor, ColorSensor, UltrasonicSensor, ForceSensor
     robotics.py        # DriveBase
-    parameters.py      # Port, Direction, Stop, Color, Button, Side
+    parameters.py      # Port, Direction, Stop, Color, Button, Side, Axis, Icon
     tools.py           # wait, StopWatch
+  umath.py, urandom.py, micropython.py   # MicroPython names
   trainer_sim/         # the engine (students never import this)
-    world.py           # mat, shapes, zones, obstacles, color lookup
-    robot.py           # robot geometry, ports, motion and wheel math
-    clock.py           # virtual time
-    trace.py           # records poses, lines, prints and events
+    sim.py             # virtual clock, physics tick, sensors, recorder
+    motion.py          # motors, speed profiles, motor controllers
+    drive.py           # DriveBase controller (encoders or gyro)
+    world.py, shapes.py  # mat, painted shapes, zones, obstacles, walls
+    robot.py           # robot file: wheels, body, ports
     runner.py          # runs student code with limits and the line tracer
-    goals.py           # checks challenge goals against a trace
-    errors.py          # turns Python errors into kid-friendly explanations
-  tests/
+    goals.py           # checks challenge goals
+    errors.py          # kid-friendly explanations and pre-run warnings
+    snapshot.py        # formats variables for the variables panel
+sim/tests/             # pytest; also runs every challenge solution in content/
 ```
 
-The same package runs in Pyodide in the browser and in regular Python for
-tests and CI.
+The same package runs in Pyodide (Python 3.14) in the browser and in regular
+Python (3.11 or newer) for tests and CI. The frontend bundles the `.py`
+files and writes them into Pyodide's file system when the worker starts.
+
+**Imports are allowlisted**: `pybricks`, `math`/`umath`, `random`/`urandom`
+and `micropython`. That matches what a real hub offers, and it keeps student
+code away from browser APIs (see §12).
 
 ### 4.3 Pybricks API covered in v1
 
 | Module | Supported |
 |---|---|
-| `robotics.DriveBase` | `straight`, `turn`, `drive`, `stop`, `distance`, `angle`, `reset`, `settings`, `use_gyro` |
-| `pupdevices.Motor` | `run`, `run_angle`, `run_time`, `run_target`, `stop`, `hold`, `angle`, `reset_angle`, `speed` |
-| `pupdevices.ColorSensor` | `color`, `reflection`, `hsv` |
-| `pupdevices.UltrasonicSensor` | `distance` |
-| `hubs.PrimeHub` | `imu.heading`, `imu.reset_heading`, `display.text/number/char`, `light.on/off`, `speaker.beep`, `buttons.pressed` |
+| `robotics.DriveBase` | `straight`, `turn`, `curve`, `arc`, `drive`, `stop`, `brake`, `distance`, `angle`, `state`, `reset`, `settings`, `use_gyro`, `done`, `stalled`; `then=` and `wait=` on moves |
+| `pupdevices.Motor` | `run`, `run_angle`, `run_target`, `run_time`, `run_until_stalled`, `dc`, `track_target`, `stop`, `brake`, `hold`, `angle`, `reset_angle`, `speed`, `done`, `stalled`, `control.limits`; `positive_direction`, `gears` |
+| `pupdevices.ColorSensor` | `color`, `reflection`, `hsv`, `ambient`, `detectable_colors` |
+| `pupdevices.UltrasonicSensor` | `distance`, `presence` |
+| `hubs.PrimeHub` | `imu.heading/reset_heading/angular_velocity/tilt`, `display.text/number/char/icon/off`, `light.on/off`, `speaker.beep/play_notes`, `buttons.pressed` (scripted presses), `battery`, `system` |
 | `tools` | `wait`, `StopWatch` |
 
-Calls that aren't supported raise a friendly "not in the simulator yet"
-message. `async`/`multitask` is out of scope for v1.
+Calls that aren't supported yet, such as `multitask`, `run_task` and
+`hub_menu`, raise a friendly "not in the simulator yet" message.
+
+**Faithful mistakes.** The simulator only knows what a real drive base
+knows, so common real-robot mistakes behave the same way:
+
+- Forgetting `Direction.COUNTERCLOCKWISE` on the mirrored left motor makes the
+  robot spin in place.
+- A wrong `wheel_diameter` makes it drive the wrong distance.
+- A `ColorSensor` on a motor's port raises the hub's "no device" error, with a
+  friendly explanation.
 
 ### 4.4 World model
 
-- Units are millimeters and degrees, the same as Pybricks.
-- The default table is the FLL size, about 2362 × 1143 mm.
+- Units are millimeters and degrees, the same as Pybricks. The origin is the
+  **bottom-left corner of the mat**, with x to the right and y up.
 - Positive heading means **clockwise**, matching Pybricks, so
-  `hub.imu.heading()` and `drive_base.turn(90)` agree with the drawing.
-- A world is a YAML/JSON file:
-  - **Shapes** (rectangles, circles, lines of a given width and color) that
-    the color sensor can see.
-  - **Zones**: named areas used by goals ("end in the blue base").
-  - **Obstacles and walls**: the robot stops when it hits one, and the hit is
-    recorded as an event.
-  - **Start pose**.
-- Worlds are drawn from these shapes instead of from images. Color readings
-  are exact, teachers can write worlds without an image editor, and we avoid
-  copyrighted season-mat artwork (see open questions).
+  `hub.imu.heading()` and `drive_base.turn(90)` agree with the drawing. A
+  heading of 0 faces right.
+- The default table is the FLL size, 2362 × 1143 mm, and the table's edges
+  are walls.
+- A world is a YAML file in `content/worlds/`:
+  - **`shapes`**: painted shapes the color sensor can see, drawn in order
+    (later shapes on top). There are four types:
+    - `rect`, with an optional `angle`.
+    - `circle`.
+    - `line`: tape through points, with a `width`.
+    - `arc`: part of a ring, sweeping clockwise from `start` to `end`.
+  - **`zones`**: named, invisible areas used by goals. They're drawn as
+    dashed outlines.
+  - **`obstacles`**: rects and circles the robot bumps into. The robot stops
+    and a `collision` event is recorded.
+  - **`start`** pose, plus an optional `grid` spacing for the drawing. A
+    challenge can override the start pose.
+- **The color sensor sees a spot, not a point** (6 mm radius). Reflection
+  blends smoothly across the edge of a line, which is what makes
+  proportional line following work, just like on a real mat.
+- Worlds are drawn from shapes instead of images. Color readings are exact,
+  teachers can write worlds without an image editor, and we avoid
+  copyrighted season-mat artwork.
 
 ### 4.5 Robot model
 
+- **Standard robot**: "Trainer Bot" (`content/robots/trainer-bot.yaml`).
+
+  | Part | Details |
+  |---|---|
+  | Wheels | 56 mm wheels, 112 mm axle track |
+  | Port A | Left wheel (mounted mirror-image) |
+  | Port B | Right wheel |
+  | Port C | Color sensor, 75 mm ahead of the axle |
+  | Port D | Ultrasonic sensor, at the front |
+  | Ports E, F | Arm motors, with ±90° mechanical limits |
+
+  Custom robots and robot mods come later.
 - **Movement**: the robot steers by driving its two wheels at different
-  speeds. Speed ramps up and down (as set by `DriveBase.settings`), and the
-  simulator tracks each wheel's rotation so `Motor.angle()` and
-  `drive_base.distance()` report the right values.
-- **Robot file**: wheel diameter, axle track (distance between the wheels),
-  footprint, and which **device is on which port**, including each sensor's
-  position on the robot. Creating a device on an empty port raises the same
-  kind of error a real hub does.
-- **Attachment motors** (arms) turn and show up as an angle indicator in v1.
-  They don't move objects yet.
-- **Realism settings** (per lesson, with a fixed random seed so every run of
-  the same code gives the same result): wheel slip, one motor slightly weaker
-  than the other, gyro drift, sensor noise. Early lessons turn these off.
-  The gyro and proportional-control lessons turn them on to show *why* those
-  techniques matter.
+  speeds.
+  - Motors are ideal position-controlled servos, limited by top speed
+    (1000°/s), mechanical limits and collisions.
+  - Moves follow trapezoid speed profiles (as set by
+    `DriveBase.settings`).
+  - With `use_gyro(True)`, the drive base corrects its heading using the
+    gyro.
+- **Realism** (`realism: on` in a challenge; fixed seed, so every run of the
+  same code gives the same result):
+  - The left wheel is 2.5% smaller than the right.
+  - The wheels slip about 1%.
+  - The gyro drifts 0.05°/s.
+  - Sensor noise has a standard deviation of 1.5.
+
+  Imperfections are added where wheel rotation becomes movement, so encoder
+  readings stay perfect, like on a real robot. Without the gyro, a 1.6 m
+  straight drifts about 27 cm. With the gyro it stays on target. The
+  "Straight as an Arrow" challenge teaches exactly this.
 
 ### 4.6 Trace format (worker → UI)
+
+Frames are stored as columns to keep the trace small (about 50 frames per
+second of robot time):
 
 ```jsonc
 {
   "sim_version": "0.1.0",
-  "dt_ms": 10,
-  "frames": [[t, x, y, heading, left_deg, right_deg, arm_deg], ...],
-  "lines":  [{"t": 0, "line": 7, "vars": {"i": 2, "speed": 150}}, ...],
-  "prints": [{"t": 1200, "text": "Found the line!"}],
-  "events": [{"t": 3400, "type": "collision", "with": "wall"}],
-  "end":    {"reason": "finished" | "error" | "time_limit" | "step_limit",
-             "error": {"line": 5, "kid_message": "...", "python_message": "..."}},
-  "goals":  [{"id": "reach-blue", "passed": true, "detail": "..."}]
+  "frame_ms": 20,
+  "start":   {"x": 200, "y": 200, "heading": 0},
+  "frames":  {"t": [...], "x": [...], "y": [...], "heading": [...], "line": [...]},
+  "sensors": {"gyro": [...], "C.reflection": [...], "C.color": [...], "D.distance": [...]},
+  "motors":  {"E": [...], "F": [...]},             // arm angles
+  "steps":   [[t, line], ...],                      // every line run (first 5000)
+  "vars":    [{"t": 12.5, "vars": [["speed", "200", "global"], ...]}, ...],  // on change
+  "prints":  [{"t": 1200, "line": 14, "text": "Found the line!"}],
+  "events":  [{"t": 3400, "type": "collision", "what": "wall", "line": 9}],   // also beep, display, light, stalled
+  "end":     {"reason": "finished" | "error" | "time_limit" | "step_limit", "t": 3600, "line": 9,
+              "error": {"type": "NameError", "line": 5, "kid_message": "...", "python_message": "..."}},
+  "warnings": [{"line": 7, "message": "`drive_base.stop` doesn't do anything by itself..."}],
+  "goals":   [{"id": "no-errors", "label": "Program runs without errors", "passed": true, "detail": ""}, ...],
+  "stats":   {"lines": 688, "sim_ms": 3600, "wall_ms": 40}
 }
 ```
 
 ### 4.7 Challenge goals
 
-Goals are declarative so teachers can write them without writing code:
+Goals are declarative so teachers can write them without writing code.
+Zone checks use the center of the robot. Any challenge with goals also gets
+an automatic first goal: "Program runs without errors".
 
 | Goal type | Example |
 |---|---|
-| `end_in_zone` | Finish inside the base |
-| `visit_zones` | Visit A, B, C, D (optionally in order) |
-| `avoid_zones` / `no_collisions` | Don't touch the wall |
-| `max_time` | Finish within 30 s |
-| `must_use` | The code must contain a `for` loop or a function (checked by parsing the code) |
-| `max_lines` | Solve it in 12 lines or fewer (encourages loops and functions) |
-| `printed` | The output includes a given value |
+| `end_in_zone` | `{type: end_in_zone, zone: garage}` |
+| `visit_zones` | `{type: visit_zones, zones: [a, b, c], in_order: true}` |
+| `avoid_zones` | `{type: avoid_zones, zones: [pit]}` |
+| `no_collisions` | Don't bump into walls or obstacles |
+| `max_time` | `{type: max_time, seconds: 30}` |
+| `must_use` | `{type: must_use, construct: for}`. Also `while`, `if`, `def`, `list` or `variable` (checked by parsing the code). |
+| `max_calls` | `{type: max_calls, name: straight, value: 1}`. Encourages loops and functions. |
+| `printed` | `{type: printed, text: "Found it"}` |
 
 ## 5. Code visualizer
 
@@ -277,6 +347,15 @@ blocks:
       - Driving a square means doing the same two things four times.
       - "Try: for side in range(4):"
 ```
+
+### 7.2a Playground challenge files (milestone 1)
+
+Before the full lesson system, the playground reads one YAML file per
+challenge from `content/challenges/`. It has the same fields as a
+`challenge` block: `world`, optional `start`, `time_limit`, `realism`,
+`summary`, `instructions` (Markdown), `goals`, `hints`, `starter` and
+`solution`. CI runs every `solution` and fails if it doesn't pass its own
+goals, and also fails if the `starter` already passes them.
 
 ### 7.3 How teachers add lessons
 
@@ -399,21 +478,38 @@ generated from it.
   validation, frontend type checks and tests, then build the Docker images.
   Deploy with `docker compose pull && up -d`.
 
-## 12. Privacy (children under 13)
+## 12. Sign-in and privacy (children under 13)
 
+- **Early sign-up**: students choose a **username and a PIN**. There's no
+  email, real name or birth date. The sign-up page suggests a made-up name
+  instead of a real one.
+- **Later (coach app)**: a coach creates and manages student accounts and
+  hands out usernames and PINs. They can also reset a forgotten PIN. The
+  data model (§8) already supports this: a coach's `Membership` gives them
+  authority over the students on their team.
+- **PIN security**: a PIN is short, so it gets extra protection:
+  - Hashed the same way Django hashes passwords.
+  - Lockout after repeated failures, limited per account and per IP address.
+  - A minimum length (6 digits proposed).
+  - Rejection of obvious PINs such as `123456` and `000000`.
+  - Adult accounts (coaches) use full passwords.
 - Collect as little as possible. Students get a username, a display name and
-  a preset avatar. No email, real name, birth date or free-text profile.
-- Students join through a team code handed out by an adult. Adult accounts
-  (coach or parent) are the only ones with email addresses.
+  a preset avatar, with no free-text profile.
 - Student code and attempts are visible only to the student and, later, to
   their team's coaches and mentors.
 - Nothing is sent to third parties. No analytics SDKs in v1.
+- **When coaches can run a student's code** (a later feature), the simulator
+  worker must have no access to the coach's logged-in session. For example,
+  it can be served from a separate origin, so student code can't make API
+  calls as the coach. v1 already blocks imports that aren't on an allowlist
+  (§4.2). Real hubs don't have most Python modules, so this also teaches the
+  real limits.
 
 ## 13. Repository layout
 
 ```
 python-trainer/
-  sim/          Python simulator + fake pybricks package (pytest)
+  sim/          Python simulator + simulated pybricks package (pytest, uv)
   backend/      Django project: accounts, teams, curriculum, progress
   frontend/     React + TS app: lesson player, editor, renderer, worker
   content/      Lessons, worlds and robot files (YAML + .py)
@@ -425,27 +521,20 @@ python-trainer/
 
 | Milestone | Scope |
 |---|---|
-| **M1: Simulator playground** | `sim/` package + tests; Web Worker with Pyodide; mat renderer; editor; trace playback; friendly errors. No accounts. This is the riskiest and most fun part, so it gets built and tested with a real kid first. |
+| **M1: Simulator playground** ✅ | `sim/` package + tests; Web Worker with Pyodide; mat renderer; editor; trace playback; friendly errors. No accounts. This is the riskiest and most fun part, so it gets built and tested with a real kid first. |
 | **M2: Lessons** | Lesson schema, lesson player, visualizer, quizzes, goals, hints; first 4 units of the curriculum |
 | **M3: Accounts & progress** | Django backend, teams and join codes, drafts, attempts, progress, admin lesson editing, content import and validation |
 | **M4: Deploy** | EC2 + Compose + Caddy + backups + CI |
 | **M5: Rest of the curriculum** | Sensors, line following, proportional control, mission runner |
 | **Later** | Coach dashboard, a better lesson authoring UI with a world editor, AI tutor (a proxy endpoint on the server), pushable mission models, custom robot files, season-specific mats |
 
-## 15. Open questions
+## 15. Decision log
 
-1. **Student sign-up in v1.** Before the coach app exists, how do students get
-   accounts? Proposal: an adult creates a team in Django admin and hands out
-   the join code. Students choose a username and password. Will most
-   deployments be through a school or organization? That affects how we
-   handle parental consent.
-2. **Stack fit.** Does Django + React/TypeScript suit you, or do you prefer
-   something else for either side?
-3. **Mats.** FIRST's season mat artwork is copyrighted. Proposal: original
-   practice mats drawn from shapes, and possibly a private, team-only
-   season-mat image upload later.
-4. **Robot.** One standard training robot in v1, or let teams enter their own
-   robot's measurements so code transfers with less tuning? Proposal: the
-   standard robot in v1 and custom robots later.
-5. **Mission models.** Does the simulator need to push or collect objects in
-   v1? Proposal: no. Mission models are a big physics step and come later.
+| Date | Decision |
+|---|---|
+| 2026-09-26 | Pybricks API, browser simulator, no block coding, AI tutor later, coach app later but data model ready |
+| 2026-09-26 | Student code runs in the browser (Pyodide). The EC2 server stores accounts, lessons and progress. |
+| 2026-09-26 | Early sign-up with username + PIN. Later, coaches manage accounts and hand out usernames and PINs. |
+| 2026-09-26 | One standard training robot ("Trainer Bot"). Custom robots and robot mods come later. The app is mainly about Python. |
+| 2026-09-26 | Original practice mats built from shapes. No copyrighted season artwork. |
+| 2026-09-26 | Pushing or collecting mission models comes after v1 |

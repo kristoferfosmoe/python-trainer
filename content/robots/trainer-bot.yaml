@@ -1,0 +1,42 @@
+# The standard robot used by every lesson (for now).
+# Measurements are in millimeters. Sensor positions are [forward, left] from
+# the point halfway between the wheels.
+id: trainer-bot
+name: Trainer Bot
+wheel_diameter: 56
+axle_track: 112
+body:
+  front: 110
+  back: 60
+  width: 150
+ports:
+  A:
+    device: motor
+    role: left_wheel
+    label: Left wheel
+    # Mounted mirror-image, so Pybricks needs Direction.COUNTERCLOCKWISE.
+    mirrored: true
+  B:
+    device: motor
+    role: right_wheel
+    label: Right wheel
+  C:
+    device: color_sensor
+    label: Color sensor (looks down)
+    position: [75, 0]
+  D:
+    device: ultrasonic_sensor
+    label: Distance sensor (looks forward)
+    position: [105, 0]
+  E:
+    device: motor
+    role: arm
+    label: Left arm
+    min_angle: -90
+    max_angle: 90
+  F:
+    device: motor
+    role: arm
+    label: Right arm
+    min_angle: -90
+    max_angle: 90

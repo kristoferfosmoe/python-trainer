@@ -1,0 +1,56 @@
+id: stop-at-the-line
+title: Stop at the Line
+world: practice-field
+start: {x: 900, y: 830, heading: 0}
+time_limit: 30
+summary: Drive until the color sensor sees the black line, then stop.
+instructions: |
+  You don't always know exactly how far to drive. Robots use **sensors**
+  to find their way.
+
+  The color sensor looks down at the mat. `line_sensor.reflection()` gives a
+  number from 0 (very dark) to 100 (very bright). White is about 98 and black
+  is about 9.
+
+  Start driving with `drive_base.drive(speed, turn_rate)`. It keeps going
+  until you stop it. Then use a `while` loop to wait until the sensor sees
+  the black line, and stop.
+goals:
+  - {type: end_in_zone, zone: at-line}
+  - {type: must_use, construct: while}
+  - {type: no_collisions}
+hints:
+  - "`drive_base.drive(150, 0)` drives forward at 150 mm/s without turning."
+  - "`while line_sensor.reflection() > 50:` keeps looping while the sensor sees something bright."
+  - "Inside the loop, `wait(10)` is enough. The robot keeps driving while you wait. After the loop, call `drive_base.stop()`."
+starter: |
+  from pybricks.pupdevices import Motor, ColorSensor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+  from pybricks.tools import wait
+
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  line_sensor = ColorSensor(Port.C)
+
+  print("Reflection:", line_sensor.reflection())
+  drive_base.drive(150, 0)
+  wait(1000)
+  drive_base.stop()
+solution: |
+  from pybricks.pupdevices import Motor, ColorSensor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+  from pybricks.tools import wait
+
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  line_sensor = ColorSensor(Port.C)
+
+  drive_base.drive(150, 0)
+  while line_sensor.reflection() > 50:
+      wait(10)
+  drive_base.stop()
+  print("Found the line!")

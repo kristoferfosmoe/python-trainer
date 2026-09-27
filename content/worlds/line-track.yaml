@@ -1,0 +1,18 @@
+# An oval black line for line following.
+id: line-track
+name: Line Track
+size: [2362, 1143]
+background: white
+grid: 100
+start: {x: 700, y: 230, heading: 0}
+shapes:
+  - {type: line, points: [[600, 220], [1760, 220]], width: 20, color: black}
+  - {type: arc, x: 1760, y: 570, r: 350, start: 270, end: 90, width: 20, color: black}
+  - {type: line, points: [[1760, 920], [600, 920]], width: 20, color: black}
+  - {type: arc, x: 600, y: 570, r: 350, start: 90, end: 270, width: 20, color: black}
+  - {type: rect, x: 1150, y: 120, w: 20, h: 80, color: red}
+zones:
+  - {id: finish, label: Finish, type: rect, x: 1100, y: 120, w: 140, h: 240}
+  - {id: cp-right, label: Right curve, type: circle, x: 2110, y: 570, r: 160}
+  - {id: cp-top, label: Top straight, type: rect, x: 1100, y: 820, w: 140, h: 220}
+  - {id: cp-left, label: Left curve, type: circle, x: 250, y: 570, r: 160}
