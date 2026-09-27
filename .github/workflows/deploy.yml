@@ -57,6 +57,9 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           git log -1 --format='Deploying %h: %s' "$version"
 
+      - name: Show who GitHub says this job is (AWS checks this)
+        continue-on-error: true
+        run: python3 deploy/aws/github-identity.py
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
