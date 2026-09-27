@@ -1,0 +1,60 @@
+id: crate-finder
+title: Crate Finder
+section: Sensors
+world: sensor-lab
+start: {x: 1300, y: 190, heading: 180}
+time_limit: 40
+summary: Spin until the distance sensor spots the crate, then park in front of it.
+instructions: |
+  The robot is facing the wrong way, and there's a **crate** somewhere
+  nearby. Use the distance sensor like a lighthouse: spin slowly and watch
+  `eyes.distance()`. The walls are all **more than 800 mm** away, so when
+  the distance drops below that, the sensor is looking at the crate!
+
+  Then drive toward it and stop on the **orange parking spot**, without
+  bumping into it.
+goals:
+  - {type: end_in_zone, zone: crate-spot}
+  - {type: no_collisions}
+  - {type: min_calls, name: distance}
+hints:
+  - "`drive_base.drive(0, 60)` spins in place (60 degrees per second) without driving forward."
+  - "Spin while `eyes.distance() > 700`, then stop. Now you're facing the crate."
+  - "Then drive forward while `eyes.distance() > 100`, just like in Wall Stopper."
+starter: |
+  from pybricks.pupdevices import Motor, UltrasonicSensor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+  from pybricks.tools import wait
+
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  eyes = UltrasonicSensor(Port.D)
+
+  drive_base.drive(0, 60)
+  for look in range(6):
+      print("Distance:", eyes.distance(), "mm")
+      wait(500)
+  drive_base.stop()
+solution: |
+  from pybricks.pupdevices import Motor, UltrasonicSensor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+  from pybricks.tools import wait
+
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  eyes = UltrasonicSensor(Port.D)
+
+  drive_base.drive(0, 60)
+  while eyes.distance() > 700:
+      wait(10)
+  drive_base.stop()
+  print("Crate spotted at", eyes.distance(), "mm")
+
+  drive_base.drive(150, 0)
+  while eyes.distance() > 100:
+      wait(10)
+  drive_base.stop()

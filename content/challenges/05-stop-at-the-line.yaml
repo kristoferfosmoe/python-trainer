@@ -1,5 +1,6 @@
 id: stop-at-the-line
 title: Stop at the Line
+section: Sensors
 world: practice-field
 start: {x: 900, y: 830, heading: 0}
 time_limit: 30

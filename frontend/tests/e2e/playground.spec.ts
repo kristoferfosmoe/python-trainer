@@ -50,5 +50,15 @@ test("every playground solution passes in the browser's Python", async ({ page }
     await expect(page.getByText("Challenge complete!"), key).toBeVisible({ timeout: 30_000 });
     checked++;
   }
-  expect(checked).toBeGreaterThanOrEqual(6);
+  expect(checked).toBeGreaterThanOrEqual(10);
+});
+
+test("challenges are grouped into sections, including one for sensors", async ({ page }) => {
+  await open(page, "#/playground");
+  const nav = page.getByRole("navigation", { name: "Challenges" });
+  await expect(nav.getByRole("group", { name: "Driving" }).getByRole("link", { name: /First Drive/ })).toBeVisible();
+  const sensors = nav.getByRole("group", { name: "Sensors" });
+  for (const title of ["Sensor Explorer", "Color Hunt", "Crate Finder", "Gyro Turn", "Wheel Counter"]) {
+    await expect(sensors.getByRole("link", { name: new RegExp(title) })).toBeVisible();
+  }
 });

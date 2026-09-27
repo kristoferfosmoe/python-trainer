@@ -1,0 +1,56 @@
+id: color-hunt
+title: Color Hunt
+section: Sensors
+world: sensor-lab
+time_limit: 30
+summary: Drive down the lane and stop on the red tile, using the color sensor.
+instructions: |
+  `reflection()` tells you how *bright* the mat is. To know *which color*
+  it is, ask the color sensor for `color()`:
+
+  ```python
+  if line_sensor.color() == Color.RED:
+      print("I see red!")
+  ```
+
+  Drive down the lane, past the blue, green and yellow tiles, and stop on
+  the **red** tile. Don't count millimeters: let the sensor find it!
+goals:
+  - {type: end_in_zone, zone: red-stop}
+  - {type: min_calls, name: color}
+  - {type: max_calls, name: straight, value: 0}
+hints:
+  - "`!=` means \"is not equal to\". `while line_sensor.color() != Color.RED:` loops until the sensor sees red."
+  - "Start driving with `drive_base.drive(150, 0)` before the loop, and call `drive_base.stop()` after it."
+  - Don't forget to import `Color` from `pybricks.parameters`.
+starter: |
+  from pybricks.pupdevices import Motor, ColorSensor
+  from pybricks.parameters import Port, Direction, Color
+  from pybricks.robotics import DriveBase
+  from pybricks.tools import wait
+
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  line_sensor = ColorSensor(Port.C)
+
+  drive_base.drive(150, 0)
+  wait(2000)
+  drive_base.stop()
+  print("I see:", line_sensor.color())
+solution: |
+  from pybricks.pupdevices import Motor, ColorSensor
+  from pybricks.parameters import Port, Direction, Color
+  from pybricks.robotics import DriveBase
+  from pybricks.tools import wait
+
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  line_sensor = ColorSensor(Port.C)
+
+  drive_base.drive(150, 0)
+  while line_sensor.color() != Color.RED:
+      wait(10)
+  drive_base.stop()
+  print("Found it:", line_sensor.color())

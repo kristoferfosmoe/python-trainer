@@ -1,0 +1,43 @@
+id: sensor-explorer
+title: Sensor Explorer
+section: Sensors
+world: sensor-lab
+summary: No goals. Drive over the colored tiles and watch what every sensor says.
+instructions: |
+  Your robot has lots of **sensors**. Each one answers a question:
+
+  - **Color sensor** (looks down): `line_sensor.color()` gives the color
+    under the robot, like `Color.RED`. `line_sensor.reflection()` gives how
+    bright the mat is, from 0 (dark) to 100 (bright).
+  - **Distance sensor** (looks forward): `eyes.distance()` gives how far
+    away things are, in mm.
+  - **Gyro** (inside the hub): `hub.imu.heading()` gives how many degrees
+    the robot has turned.
+  - **Motors**: `left_motor.angle()` gives how many degrees the wheel has
+    spun.
+
+  Press **Run** and read the console. Then try:
+
+  - What does `reflection()` say on each tile? Which color is darkest?
+  - Add a `drive_base.turn(90)` at the start. How do the heading and distance change?
+  - How far does the robot drive for each 360° of wheel spin?
+starter: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor, ColorSensor, UltrasonicSensor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+  from pybricks.tools import wait
+
+  hub = PrimeHub()
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  line_sensor = ColorSensor(Port.C)
+  eyes = UltrasonicSensor(Port.D)
+
+  drive_base.drive(100, 0)
+  for reading in range(14):
+      print("color:", line_sensor.color(), "reflection:", line_sensor.reflection())
+      print("  distance:", eyes.distance(), "heading:", hub.imu.heading(), "wheel:", left_motor.angle())
+      wait(1000)
+  drive_base.stop()

@@ -1,0 +1,63 @@
+id: gyro-turn
+title: Gyro Turn
+section: Sensors
+world: sensor-lab
+start: {x: 300, y: 200, heading: 0}
+time_limit: 30
+summary: Turn a quarter turn by watching the gyro, then drive to the target.
+instructions: |
+  `drive_base.turn()` measures turns by counting how far the wheels spin.
+  On a real robot the wheels can slip, so the turn comes out wrong.
+
+  The **gyro** inside the hub feels the robot turn, even when the wheels
+  slip. `hub.imu.heading()` tells you how many degrees the robot has turned
+  since the program started. Turning right counts up, turning left counts
+  down.
+
+  Turn **left** a quarter turn (to -90) *without* `turn()`: spin with
+  `drive()` and watch the heading. Then drive straight to the yellow
+  target.
+goals:
+  - {type: end_in_zone, zone: gyro-target}
+  - {type: max_calls, name: turn, value: 0}
+  - {type: min_calls, name: heading}
+hints:
+  - "`drive_base.drive(0, -45)` spins left slowly without driving forward."
+  - "`while hub.imu.heading() > -90:` keeps looping until the robot has turned far enough left."
+  - "After `drive_base.stop()`, the target is about 810 mm straight ahead."
+starter: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+  from pybricks.tools import wait
+
+  hub = PrimeHub()
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+  print("Heading at the start:", hub.imu.heading())
+  drive_base.drive(0, -45)
+  wait(1000)
+  drive_base.stop()
+  print("Heading now:", hub.imu.heading())
+solution: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+  from pybricks.tools import wait
+
+  hub = PrimeHub()
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+  drive_base.drive(0, -45)
+  while hub.imu.heading() > -90:
+      wait(10)
+  drive_base.stop()
+  wait(200)
+  print("Heading:", hub.imu.heading())
+  drive_base.straight(810)

@@ -348,7 +348,10 @@ content/courses/fll-python/01-meet-the-robot/02-first-moves.yaml
 content/challenges/*.yaml                          # playground challenges
 ```
 
-Units and lessons are ordered by their file names. Code is written inline in
+Units, lessons and playground challenges are ordered by their file names.
+A playground challenge's `section:` (like `Driving` or `Sensors`) groups it
+with others in the playground's challenge bar; sections appear in the order
+their first challenge does. Code is written inline in
 the YAML, which keeps each lesson a single JSON document for the database
 (§8). A short example:
 

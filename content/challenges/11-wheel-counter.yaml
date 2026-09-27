@@ -1,0 +1,53 @@
+id: wheel-counter
+title: Wheel Counter
+section: Sensors
+world: measuring-lane
+time_limit: 30
+summary: Every motor is a sensor too. Count wheel degrees to stop at 1000 mm.
+instructions: |
+  Each motor has a **rotation sensor** inside. `left_motor.angle()` tells
+  you how many degrees the wheel has spun since the program started.
+
+  The wheel is 56 mm across, so one full turn (360°) rolls the robot
+  forward by its circumference: `56 * 3.14`, about 176 mm.
+
+  Work out how many degrees the wheel spins in **1000 mm**. Then drive with
+  `drive()` and stop when the wheel has spun that far. Park on the
+  **1000 mm** mark, without using `straight()`.
+goals:
+  - {type: end_in_zone, zone: mark-1000}
+  - {type: max_calls, name: straight, value: 0}
+  - {type: min_calls, name: angle}
+hints:
+  - "Degrees for 1000 mm: `target = 1000 / (56 * 3.14) * 360`. Print it to see the number."
+  - "`while left_motor.angle() < target:` keeps looping until the wheel has spun far enough."
+starter: |
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+  from pybricks.tools import wait
+
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+  drive_base.drive(200, 0)
+  wait(2000)
+  drive_base.stop()
+  print("The wheel spun", left_motor.angle(), "degrees")
+solution: |
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+  from pybricks.tools import wait
+
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+  target = 1000 / (56 * 3.14) * 360
+  print("Target:", target, "degrees")
+  drive_base.drive(200, 0)
+  while left_motor.angle() < target:
+      wait(10)
+  drive_base.stop()
