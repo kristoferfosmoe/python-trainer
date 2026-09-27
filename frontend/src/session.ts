@@ -8,11 +8,14 @@
 import { useSyncExternalStore } from "react";
 import { api, ApiError } from "./api";
 import { loadCatalog } from "./content";
+import type { TeamRobot } from "./pybricks";
 
 export interface Team {
   id: number;
   name: string;
   role: "student" | "mentor" | "coach";
+  /** The team's real robot, if the coach set it up (for copying code to Pybricks). */
+  robot: TeamRobot | null;
 }
 
 export interface Me {
@@ -122,17 +125,33 @@ function persistGuest() {
 
 // --- Server sync -----------------------------------------------------------------
 
+const inFlight = new Set<Promise<void>>();
+
 function background(request: Promise<unknown>) {
-  request.then(
-    () => state.unsaved && set({ unsaved: false }),
+  const tracked = request.then(
+    () => {
+      if (state.unsaved) set({ unsaved: false });
+    },
     (error) => {
       console.warn("Couldn't save to the server", error);
       if (!(error instanceof ApiError && error.status === 400)) set({ unsaved: true });
     },
   );
+  inFlight.add(tracked);
+  void tracked.finally(() => inFlight.delete(tracked));
 }
 
 const draftTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+/** Send drafts still waiting for their pause, and wait until every save is done. */
+async function flushSaves() {
+  for (const [key, timer] of draftTimers) {
+    clearTimeout(timer);
+    background(api("/drafts", { method: "PUT", body: { key, code: state.drafts[key] } }));
+  }
+  draftTimers.clear();
+  await Promise.all(inFlight);
+}
 
 // --- Starting up and signing in/out ------------------------------------------------
 
@@ -176,8 +195,7 @@ export async function signIn(username: string, secret: string) {
 }
 
 export async function signOut() {
-  draftTimers.forEach((timer) => clearTimeout(timer));
-  draftTimers.clear();
+  await flushSaves(); // so nothing the student just did is lost
   await api("/auth/logout", { method: "POST" });
   set({ ...readGuest(), me: null, unsaved: false });
   await loadCatalog();
@@ -187,6 +205,22 @@ export async function joinTeam(code: string) {
   const { user } = await api<{ user: Me }>("/teams/join", { method: "POST", body: { code } });
   set({ me: user });
   await loadCatalog();
+}
+
+/** After changing teams on the coach pages: update the teams list, and solutions in the catalog. */
+export async function refreshMe() {
+  const { user } = await api<{ user: Me | null }>("/auth/me");
+  if (user && state.me) set({ me: user });
+  await loadCatalog();
+}
+
+/** Coaches, mentors and adults get the team pages. */
+export const usesTeamPages = (me: Me | null) =>
+  Boolean(me && (me.kind === "adult" || me.is_staff || me.teams.some((t) => t.role !== "student")));
+
+/** The first of your teams with a real robot set up, if any. */
+export function teamWithRobot(me: Me | null): Team | null {
+  return me?.teams.find((t) => t.robot) ?? null;
 }
 
 export const suggestUsername = () => api<{ username: string }>("/auth/suggest-username").then((r) => r.username);

@@ -1490,3 +1490,469 @@ a {
   margin: 0;
   padding-left: 1.2em;
 }
+
+/* --- Coach pages ------------------------------------------------------------------ */
+
+.coach {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  gap: 16px;
+  padding-top: 6px;
+}
+
+.coach h1 {
+  margin: 0 0 4px;
+  font-size: 1.6rem;
+}
+
+.coach h2 {
+  margin: 0 0 8px;
+  font-size: 1.15rem;
+}
+
+.back-link {
+  margin: 0;
+}
+
+.stack {
+  display: grid;
+  gap: 10px;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.row.wrap {
+  flex-wrap: wrap;
+}
+
+.coach label {
+  display: grid;
+  gap: 4px;
+  font-weight: 600;
+}
+
+.coach input,
+.coach select,
+.coach textarea {
+  font: inherit;
+  padding: 0.45em 0.65em;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--editor-bg);
+  color: var(--text);
+}
+
+.coach textarea {
+  width: 100%;
+  font-family: var(--mono);
+  resize: vertical;
+}
+
+.form-ok {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--success-soft);
+  color: var(--success);
+  font-weight: 600;
+}
+
+.secondary.danger {
+  color: var(--danger);
+}
+
+.secondary.danger:hover {
+  border-color: var(--danger);
+}
+
+.badge.danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.team-cards {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+.team-card {
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.team-card:hover {
+  border-color: var(--accent);
+}
+
+.team-card-name {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.team-card .badge {
+  justify-self: start;
+  margin: 4px 0 0;
+}
+
+.team-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.join-code {
+  display: grid;
+  justify-items: end;
+  text-align: right;
+}
+
+.join-code-value {
+  font-family: var(--mono);
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.progress-table th.unit-col {
+  text-align: center;
+  padding: 4px 2px;
+}
+
+.unit-col-num {
+  display: block;
+  font-size: 0.75rem;
+}
+
+.unit-cell {
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  min-width: 2.6em;
+  border-left: 2px solid var(--card);
+}
+
+.unit-cell.started {
+  background: var(--warning-soft);
+}
+
+.unit-cell.done {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.person {
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.person:hover {
+  color: var(--accent);
+}
+
+.people {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+
+.robot-form {
+  display: grid;
+  gap: 10px;
+}
+
+.robot-form td {
+  vertical-align: middle;
+}
+
+.robot-form label {
+  font-weight: 600;
+}
+
+.robot-form select + select {
+  margin-left: 6px;
+}
+
+.robot-form input[type="number"] {
+  width: 7em;
+}
+
+.lesson-table th.unit-name {
+  width: 30%;
+  color: var(--text);
+  vertical-align: top;
+  padding-top: 6px;
+}
+
+.lesson-status.done {
+  color: var(--success);
+  font-weight: 600;
+}
+
+.lesson-status.started {
+  color: var(--accent);
+}
+
+.lesson-status.new {
+  color: var(--muted);
+}
+
+.work-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.work-list > li {
+  border-bottom: 1px solid var(--border);
+  padding: 6px 0;
+}
+
+.work-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.work-icon {
+  font-weight: 800;
+  width: 1.2em;
+  text-align: center;
+  color: var(--muted);
+}
+
+.work-icon.pass {
+  color: var(--success);
+}
+
+.work-icon.fail {
+  color: var(--danger);
+}
+
+.work-title {
+  font-weight: 600;
+}
+
+.work-body {
+  padding: 4px 0 8px 2em;
+}
+
+.work-code h4 {
+  margin: 10px 0 4px;
+  font-size: 0.9rem;
+}
+
+.work-code .code-view {
+  max-height: 360px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+/* --- Sign-in cards (printable) ------------------------------------------------------ */
+
+.login-cards-wrap {
+  display: grid;
+  gap: 10px;
+}
+
+.login-cards-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.login-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.login-card {
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  break-inside: avoid;
+}
+
+.login-card-title {
+  font-weight: 800;
+}
+
+.login-card-name {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 4px 0;
+}
+
+.login-card dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 10px;
+  margin: 0;
+}
+
+.login-card dt {
+  color: var(--muted);
+}
+
+.login-card dd {
+  margin: 0;
+  word-break: break-all;
+}
+
+.login-card .mono {
+  font-family: var(--mono);
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.login-card-team {
+  margin-top: 6px;
+  font-size: 0.9rem;
+}
+
+.login-card-note {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+@media print {
+  body:has(.print-area) * {
+    visibility: hidden;
+  }
+
+  body:has(.print-area) .print-area,
+  body:has(.print-area) .print-area * {
+    visibility: visible;
+  }
+
+  .print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+
+  .login-card {
+    border-color: #999;
+    color: #000;
+  }
+}
+
+/* --- Run on your robot ----------------------------------------------------------------- */
+
+.robot-dialog {
+  width: min(780px, calc(100% - 32px));
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 22px;
+  background: var(--card);
+  color: var(--text);
+}
+
+.robot-dialog::backdrop {
+  background: rgba(10, 15, 30, 0.5);
+}
+
+.robot-dialog-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.robot-dialog-head h2 {
+  margin: 0;
+}
+
+.robot-dialog-section {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.robot-dialog-section p {
+  margin: 0;
+}
+
+.robot-dialog h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.robot-dialog .feedback ul {
+  margin: 4px 0 0;
+  padding-left: 1.2em;
+}
+
+.change-list {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+.robot-code .code-view {
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.robot-steps {
+  margin: 0;
+  padding-left: 1.4em;
+  display: grid;
+  gap: 8px;
+}
+
+.robot-tips {
+  margin: 4px 0 0;
+  padding-left: 1.2em;
+  color: var(--muted);
+  font-size: 0.9rem;
+  display: grid;
+  gap: 4px;
+}
+
+kbd {
+  font-family: var(--mono);
+  font-size: 0.85em;
+  padding: 0.05em 0.4em;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--bg);
+}

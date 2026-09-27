@@ -50,14 +50,14 @@ def test_who_can_see_a_students_work(student, team, coach):
     assert not sees_solutions(student) and not sees_solutions(teammate)
 
 
-def test_team_view_for_coaches(student, team, coach, client_for):
+def test_team_page_for_coaches(student, team, coach, client_for):
     Membership.objects.create(user=student, team=team)
     post(client_for(student), "/api/attempts", {"key": "playground/first-drive", "code": "x", "passed": True})
-    response = client_for(coach).get(f"/api/teams/{team.id}/students")
+    response = client_for(coach).get(f"/api/teams/{team.id}")
     assert response.status_code == 200
     data = response.json()
     assert data["team"]["join_code"] == team.join_code
     assert [s["username"] for s in data["students"]] == ["BraveOtter42"]
     assert data["students"][0]["attempts"] == 1
-    assert client_for(student).get(f"/api/teams/{team.id}/students").status_code == 403
-    assert Client().get(f"/api/teams/{team.id}/students").status_code == 401
+    assert client_for(student).get(f"/api/teams/{team.id}").status_code == 403
+    assert Client().get(f"/api/teams/{team.id}").status_code == 401

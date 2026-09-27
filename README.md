@@ -3,17 +3,21 @@
 A web app that teaches FIRST LEGO League Challenge students to program their
 robot in Python using the [Pybricks](https://pybricks.com) API. Students write
 real Pybricks code and watch a simulated robot run it on a virtual FLL table.
-Code that works here can be pasted into Pybricks for the real robot.
+When it works, **🤖 Run on your robot** gets the code ready for
+[Pybricks](https://code.pybricks.com), changed to fit the team's real robot.
 
 **Status:** all planned milestones are done:
 - the simulator and playground,
 - the lesson system with all 12 units (28 lessons, from `print()` to line
   following, proportional control and a mission runner),
 - student accounts (username + PIN), teams and saved progress,
+- coach tools: team progress, coach-made accounts with printable sign-in
+  cards, PIN resets, mentors, and each student's code,
+- running lesson code on a real robot through Pybricks,
 - lesson editing in the admin,
 - deployment to AWS EC2.
 
-Next up: a coach dashboard (its API is ready) and an AI tutor. See
+Next up: an AI tutor and a friendlier lesson editor. See
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design and
 [docs/DEPLOY.md](docs/DEPLOY.md) to put it online.
 
@@ -39,6 +43,7 @@ cd backend
 uv run python manage.py migrate
 uv run python manage.py import_content        # load the lessons (checks them first)
 uv run python manage.py createsuperuser       # for /admin (optional)
+uv run python manage.py create_coach coach_kim --team "Brick Builders"   # a coach (optional)
 uv run python manage.py runserver
 
 # Terminal 2: the web app on http://localhost:5173 (it forwards /api and /admin to Django)
@@ -56,19 +61,37 @@ browser. Locally the backend uses SQLite. In production it uses PostgreSQL.
 # Simulator: physics, sensors, errors, and every lesson and challenge
 cd sim && uv run pytest
 
-# Backend: accounts, PIN protection, teams, lessons, progress, admin checks
+# Backend: accounts, PIN protection, teams and coach tools, lessons, progress, admin checks
 cd backend && uv run pytest
 
-# Web app: typecheck, unit tests, production build
+# Web app: typecheck, unit tests (including the Pybricks export), production build
 cd frontend && npm run typecheck && npm test && npm run build
 
 # Browser tests: starts Django and Vite, runs real Python in Chromium,
-# and runs every lesson and playground solution
+# runs every lesson and playground solution, and walks through the coach tools
 cd frontend && npx playwright install chromium && npm run test:e2e
 ```
 
 If Chromium is already installed somewhere else, set `CHROMIUM_PATH` to its
 executable instead of running `playwright install`.
+
+## For coaches
+
+Sign in with your coach account and open **👥 Teams**:
+
+- **Make a team.** Its join code is on the team page. Students type it when
+  they sign up (or on their account page).
+- **Or make the accounts yourself**: type one nickname per line (first names
+  or initials, no last names) and print the sign-in cards. PINs are shown
+  only once, but you can make a new PIN for anyone at any time.
+- **See progress**: a row per student and a column per unit. Click a student
+  to see their lessons and the code for every challenge they've tried.
+- **Mentors**: make an older student a mentor. Mentors can see everyone's
+  work and the answers, but can't change accounts.
+- **Our robot**: describe your team's real robot (which port each motor and
+  sensor uses, and the wheel sizes). When students press **🤖 Run on your
+  robot**, their code is changed to fit it and they get the steps to run it in
+  Pybricks.
 
 ## Writing lessons
 

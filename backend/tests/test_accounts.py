@@ -65,7 +65,7 @@ def test_signup_with_a_team_code(team):
     client = Client()
     assert signup(client, join_code=team.join_code.lower()).status_code == 200
     me = client.get("/api/auth/me").json()["user"]
-    assert me["teams"] == [{"id": team.id, "name": "Brick Builders", "role": "student"}]
+    assert me["teams"] == [{"id": team.id, "name": "Brick Builders", "role": "student", "robot": None}]
     assert signup(Client(), username="Other", join_code="NOPE99").status_code == 400
     assert not User.objects.filter(username="Other").exists()
 

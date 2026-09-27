@@ -15,6 +15,12 @@ def django_db_setup(django_db_setup, django_db_blocker):
         call_command("import_content", "--no-check", verbosity=0)
 
 
+@pytest.fixture(autouse=True)
+def fast_hashing(settings):
+    """Real PIN hashing is slow on purpose; tests don't need that."""
+    settings.PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
+
+
 def make_user(username, kind=User.Kind.STUDENT, secret=PIN, **extra):
     return User.objects.create_user(username=username, password=secret, kind=kind, **extra)
 

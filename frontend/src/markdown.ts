@@ -37,3 +37,8 @@ const marked = new Marked({
 export function markdown(text: string) {
   return { __html: DOMPurify.sanitize(marked.parse(text, { async: false })) };
 }
+
+/** One line of Markdown (`code`, **bold**), without a paragraph around it. */
+export function inlineMarkdown(text: string) {
+  return { __html: DOMPurify.sanitize(marked.parseInline(text, { async: false })) };
+}

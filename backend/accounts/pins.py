@@ -2,6 +2,7 @@
 
 import random
 import re
+import secrets
 
 PIN_LENGTH = 6
 USERNAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]{2,19}$")
@@ -43,7 +44,8 @@ def suggest_username(rng=random):
     return f"{rng.choice(ADJECTIVES)}{rng.choice(ANIMALS)}{rng.randint(10, 99)}"
 
 
-def random_pin(rng=random):
+def random_pin(rng=secrets.SystemRandom()):
+    """A PIN that's hard to guess (made with the system's secure random numbers)."""
     while True:
         pin = "".join(rng.choice("0123456789") for _ in range(PIN_LENGTH))
         if pin_problem(pin) is None:

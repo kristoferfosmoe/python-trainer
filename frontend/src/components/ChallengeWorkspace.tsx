@@ -15,6 +15,7 @@ import { ErrorCard, Notice, Warnings } from "./Feedback";
 import { MatView } from "./MatView";
 import { ConsolePanel, RobotPanel, VariablesPanel } from "./Panels";
 import { PlaybackBar } from "./PlaybackBar";
+import { RunOnRobot } from "./RunOnRobot";
 
 type Tab = "console" | "variables" | "robot";
 
@@ -57,7 +58,7 @@ export function ChallengeWorkspace({ challenge, codeKey, lessonId, intro, onSolv
   const [tracedCode, setTracedCode] = useState("");
   const [runError, setRunError] = useState<KidError | null>(null);
   const [tab, setTab] = useState<Tab>("console");
-  const [copied, setCopied] = useState(false);
+  const [onRobot, setOnRobot] = useState(false);
   const [runCount, setRunCount] = useState(0);
   const playback = usePlayback(trace);
 
@@ -113,22 +114,16 @@ export function ChallengeWorkspace({ challenge, codeKey, lessonId, intro, onSolv
     changeCode(challenge.starter);
   };
 
-  const copyCode = async () => {
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      window.prompt("Copy your code:", code);
-    }
-  };
-
   // Test hook: lets browser tests type into the editor quickly.
   useEffect(() => {
     if (!import.meta.env.DEV) return;
+    // The hooks come from the latest render, so tests can wait for code() and
+    // runs() to catch up before pressing Run or skipping to the end.
     const hooks = {
       setCode: changeCode,
       key: () => codeKey,
+      code: () => code,
+      runs: () => runCount,
       solution: () => challenge.solution ?? "",
       skipToEnd: playback.skipToEnd,
     };
@@ -150,6 +145,7 @@ export function ChallengeWorkspace({ challenge, codeKey, lessonId, intro, onSolv
 
   return (
     <div className="workspace" data-runs={runCount}>
+      {onRobot && <RunOnRobot code={code} onClose={() => setOnRobot(false)} />}
       <div className="left">
         <ChallengeCard challenge={challenge} world={world} goals={goals} intro={intro} />
         {allPassed && (
@@ -166,8 +162,8 @@ export function ChallengeWorkspace({ challenge, codeKey, lessonId, intro, onSolv
             <span className="shortcut">Ctrl + Enter</span>
             <span className="spacer" />
             {hasWorld && (
-              <button className="secondary" onClick={copyCode} title="Copy your code to paste into Pybricks for your real robot">
-                {copied ? "Copied!" : "📋 Copy for Pybricks"}
+              <button className="secondary" onClick={() => setOnRobot(true)} title="Copy your code into Pybricks and run it on a real robot">
+                🤖 Run on your robot
               </button>
             )}
             <button className="secondary" onClick={resetCode}>↺ Start over</button>

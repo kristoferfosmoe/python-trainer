@@ -1,4 +1,4 @@
-# Python Trainer: Architecture (v1.0)
+# Python Trainer: Architecture (v1.1)
 
 A website that teaches FIRST LEGO League (FLL) Challenge students to program
 their robot in Python with the [Pybricks](https://pybricks.com) API. The
@@ -143,7 +143,7 @@ code away from browser APIs (see §12).
 | `pupdevices.Motor` | `run`, `run_angle`, `run_target`, `run_time`, `run_until_stalled`, `dc`, `track_target`, `stop`, `brake`, `hold`, `angle`, `reset_angle`, `speed`, `done`, `stalled`, `control.limits`; `positive_direction`, `gears` |
 | `pupdevices.ColorSensor` | `color`, `reflection`, `hsv`, `ambient`, `detectable_colors` |
 | `pupdevices.UltrasonicSensor` | `distance`, `presence` |
-| `hubs.PrimeHub` | `imu.heading/reset_heading/angular_velocity/tilt`, `display.text/number/char/icon/off`, `light.on/off`, `speaker.beep/play_notes`, `buttons.pressed` (scripted presses), `battery`, `system` |
+| `hubs.PrimeHub` | `imu.heading/reset_heading/angular_velocity/tilt`, `display.text/number/char/icon/off`, `light.on/off`, `speaker.beep/play_notes`, `buttons.pressed` (scripted presses), `battery`, `system.set_stop_button` |
 | `tools` | `wait`, `StopWatch` |
 
 Calls that aren't supported yet, such as `multitask`, `run_task` and
@@ -157,6 +157,9 @@ knows, so common real-robot mistakes behave the same way:
 - A wrong `wheel_diameter` makes it drive the wrong distance.
 - A `ColorSensor` on a motor's port raises the hub's "no device" error, with a
   friendly explanation.
+- Pressing the center button stops the program, as it does on a real hub,
+  unless the program picks another stop button with
+  `hub.system.set_stop_button()`. The error explains how.
 
 ### 4.4 World model
 
@@ -465,7 +468,7 @@ erDiagram
 |---|---|---|
 | `accounts` | `User` (custom) | username (unique, ignoring case), password hash (the PIN for students), `kind` (student/adult), `display_name`, `avatar` (a preset emoji), `failed_logins`, `locked_until`. **Students have no email.** |
 | | `LoginFailure` | ip, created_at (IP throttling; cleaned up after a day) |
-| `teams` | `Team` | name, season, `join_code` (6 characters, with no 0/O/1/I) |
+| `teams` | `Team` | name, season, `join_code` (6 characters, with no 0/O/1/I), `robot` (the team's real robot: a port for each part, wheel directions and sizes; empty means "built like the Trainer Bot") |
 | | `Membership` | user, team, role: `student` / `mentor` / `coach` |
 | `curriculum` | `World`, `Robot`, `PlaygroundChallenge` | slug, spec (JSON, as in the YAML files) |
 | | `Course` → `Unit` → `Lesson` | slug, title, order, published; `Course.owner_team` (optional); `Lesson.content` (JSON blocks as written), `Lesson.version`, `Lesson.source` (the file it came from) |
@@ -473,10 +476,19 @@ erDiagram
 | | `CodeDraft` | user, key (`lesson/<lesson>/<block>` or `playground/<id>`), code |
 | | `Attempt` | user, key, lesson, block_id, lesson_version, code, passed, goals, sim_version |
 
-**Built now, used later by the coach app:** `teams/permissions.py` holds
-the one rule, "coaches and mentors can see the students on their team;
-staff can see everyone". `GET /api/teams/{id}/students` already serves a
-team's progress to its coaches, so the coach UI only needs screens.
+**Who can do what** lives in one place, `teams/permissions.py`:
+
+- Everyone sees their own work.
+- A team's **coaches and mentors** see its students' progress and code, and
+  the challenge solutions.
+- Only **coaches** change things: make student accounts, give new PINs,
+  unlock accounts, make a student a mentor, take someone off the team, change
+  the join code, and describe the team's robot. They can only change kids'
+  accounts, never an adult's or an admin's.
+- **Staff** (site admins) can see and change every team.
+
+Any adult account can make a team and becomes its coach. Admins make coach
+accounts in the admin or with `manage.py create_coach`.
 
 Pass/fail is computed in the browser and reported to the server. A student
 could fake a pass. That's fine for a learning tool, and it's the trade-off
@@ -496,7 +508,18 @@ POST /api/auth/logout
 GET  /api/auth/me                    {user: ... | null}
 GET  /api/auth/suggest-username
 POST /api/teams/join                 {code}
-GET  /api/teams/{id}/students        coaches and mentors of that team only
+GET  /api/teams                      the teams you coach or mentor (staff: all)
+POST /api/teams                      {name, season}   adults only; you become the coach
+GET  /api/teams/{id}                 team page: join code, robot, students with progress, leaders
+PATCH /api/teams/{id}                {name?, season?, robot?}             coaches
+POST /api/teams/{id}/join-code       a new join code                      coaches
+POST /api/teams/{id}/members         {students: [{display_name, username?}]}  up to 10 per call;
+                                     returns each username and PIN (shown only this once)  coaches
+GET  /api/teams/{id}/members/{user}  one student's lessons, and each challenge's runs and code
+POST /api/teams/{id}/members/{user}/pin     a new PIN (also unlocks)      coaches
+POST /api/teams/{id}/members/{user}/unlock                                coaches
+PATCH /api/teams/{id}/members/{user} {role: student | mentor}             coaches
+DELETE /api/teams/{id}/members/{user}  off the team (the account stays)   coaches
 GET  /api/catalog                    courses (lesson titles), playground, worlds, robot
 GET  /api/lessons/{slug}             blocks with playground refs expanded
 GET  /api/me/state                   progress, solved playground challenges, drafts
@@ -517,6 +540,32 @@ practice quizzes.
   - `#/lesson/<slug>/<page>`.
   - `#/playground/<id>`.
   - `#/signup`, `#/signin` and `#/account`.
+  - `#/teams`, `#/teams/<id>` and `#/teams/<id>/<username>`: the coach
+    tools. The **👥 Teams** link shows for adults, mentors and staff.
+- **Team pages** (`pages/TeamPages.tsx`):
+  - A progress grid: one row per student, one column per unit, with last
+    activity and playground challenges solved.
+  - **Add students**: one nickname per line (optionally `nickname,
+    username`). Accounts are made 10 at a time, because each PIN takes a
+    moment to hash, and come back as **printable sign-in cards**.
+  - The join code, the team's robot, team details, coaches and mentors.
+  - A student's page: every lesson's status, and every challenge with its
+    runs, its latest code, the code that passed, and what's in the editor
+    now. Coaches also get new PIN, unlock, mentor and remove buttons.
+- **Run on your robot** (`pybricks.ts`, `components/RunOnRobot.tsx`): a
+  dialog that gets a challenge's code ready for
+  [Pybricks](https://code.pybricks.com), with the steps to run it on a real
+  hub.
+  - Lesson code is written for the Trainer Bot. If the student's team has
+    described its robot, the setup is rewritten to match: every `Port.X` moves
+    to the team's port for that part, a wheel motor mounted the other way gets
+    the other `Direction`, and the Trainer Bot's `wheel_diameter` and
+    `axle_track` become the team's. Comments and strings are left alone (the
+    code is parsed with @lezer/python first), and every change is listed.
+  - It warns about things that will fail on the robot: a part the team's robot
+    doesn't have, wheel sizes it couldn't find, and reading the buttons without
+    changing the stop button. It also gives a few real-robot tips.
+  - Copying uses the clipboard. There's no direct Bluetooth download yet.
 - **Start-up**: the app loads the catalog and the session, and shows the app
   once both have arrived. Lessons are loaded when opened, and cached.
 - **Session store** (`session.ts`):
@@ -525,6 +574,7 @@ practice quizzes.
   - **Signed-in students** get them from `/api/me/state`. Changes show
     instantly and are sent to the server in the background (drafts after an
     800 ms pause). A "⚠ Not saved yet" pill appears if saving fails.
+    Signing out first sends anything still waiting to be saved.
   - **Signing up or in as a guest** merges the guest's progress into the
     account, then clears it from the browser.
 - **Libraries**: React, CodeMirror 6 (Python mode, Pybricks autocomplete,
@@ -567,10 +617,12 @@ See **[DEPLOY.md](DEPLOY.md)** for the step-by-step guide. In short:
   optional nickname, a preset avatar and a team code. There's no email,
   real name or birth date. A 🎲 button suggests a made-up username (like
   "BraveOtter42"), and the form warns not to use a real name.
-- **Later (coach app)**: a coach creates and manages student accounts and
-  hands out usernames and PINs. They can also reset a forgotten PIN. The
-  data model (§8) already supports this: a coach's `Membership` gives them
-  authority over the students on their team.
+- **Coach-made accounts**: a coach can make the accounts instead. They type
+  nicknames (first names or initials; the page asks for no last names), and
+  get a made-up username and PIN for each, on printable cards. PINs come
+  from the system's secure random numbers, are shown only once, and are
+  stored only as hashes. A coach can give a student a new PIN at any time,
+  which also unlocks the account.
 - **PIN security**: a PIN is short, so it gets extra protection:
   - Hashed the same way Django hashes passwords.
   - After 5 wrong PINs, the account locks for 5 minutes.
@@ -580,11 +632,12 @@ See **[DEPLOY.md](DEPLOY.md)** for the step-by-step guide. In short:
     counting (`123456`, `987654`).
   - Adults use full passwords (at least 10 characters, checked by Django's
     validators).
-  - An admin can give a student a new PIN, or unlock the account.
+  - A coach (on the team page) or an admin can give a student a new PIN, or
+    unlock the account.
 - Collect as little as possible. Students get a username, a display name and
   a preset avatar, with no free-text profile.
-- Student code and attempts are visible only to the student and, later, to
-  their team's coaches and mentors.
+- Student code and attempts are visible only to the student and to their
+  team's coaches and mentors. Coaches read the code; they don't run it.
 - Nothing is sent to third parties. No analytics SDKs in v1.
 - **When coaches can run a student's code** (a later feature), the simulator
   worker must have no access to the coach's logged-in session. For example,
@@ -616,7 +669,8 @@ python-trainer/
 | **M3: Accounts & progress** ✅ | Django backend, teams and join codes, drafts, attempts, progress, admin lesson editing, content import and validation |
 | **M4: Deploy** ✅ | EC2 + Compose + Caddy + backups + CI |
 | **M5: Rest of the curriculum** ✅ | Units 5–12: decisions, functions, lists and dictionaries, sensors, line following, proportional control, mission runner, debugging |
-| **Later** | Coach dashboard (the API and permissions are ready), a friendlier lesson authoring UI with a world editor, an AI tutor (a proxy endpoint on the server), pushable mission models, custom robot files, season-specific mats, `hub_menu` and `multitask` in the simulator |
+| **M6: Coach tools and real robots** ✅ | Team pages: progress grid, coach-made accounts with printable cards, PIN resets, mentors, a student's code. "Run on your robot": code rewritten for the team's robot, ready for Pybricks. The hub's stop button in the simulator. |
+| **Later** | Coaches running a student's code in the simulator (needs the separate origin in §12), a friendlier lesson authoring UI with a world editor, an AI tutor (a proxy endpoint on the server), pushable mission models, simulating a team's own robot, season-specific mats, sending code straight to the hub over Bluetooth, `hub_menu` and `multitask` in the simulator |
 
 ## 15. Decision log
 
@@ -632,3 +686,6 @@ python-trainer/
 | 2026-09-27 | Content is served from the database, with solutions only for coaches, mentors and staff. Guests keep progress in the browser, and it's imported when they sign up. |
 | 2026-09-27 | Admin lesson saves run the checker in a separate process with time and memory limits. Lessons from files are re-imported on each deploy, and the admin warns about this. |
 | 2026-09-27 | `stop()` coasts and `brake()` stops sooner, like a real robot, so proportional control is worth learning. |
+| 2026-09-27 | Coach tools: coaches and mentors see their team's work; only coaches change accounts, and only kids' accounts. PINs are shown once, on printable cards. |
+| 2026-09-27 | Running on a real robot: lessons keep using the Trainer Bot, and code is rewritten for the team's robot (ports, directions, wheel sizes) when it's copied to Pybricks. Simulating each team's own robot comes later. |
+| 2026-09-27 | The center button stops programs in the simulator, like on a real hub. The Press to Start lesson teaches `set_stop_button()`. |

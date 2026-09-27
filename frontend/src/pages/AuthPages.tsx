@@ -100,7 +100,8 @@ export function SignInPage() {
   const [secret, setSecret] = useState("");
   const form = useSubmit(async () => {
     await session.signIn(username.trim(), secret);
-    navigate({ page: "map" });
+    // Coaches start on their teams; students on the lessons.
+    navigate({ page: session.getSession().me?.kind === "adult" ? "teams" : "map" });
   });
   return (
     <form className="card auth" onSubmit={form.submit}>
@@ -141,7 +142,9 @@ export function AccountPage() {
       ) : (
         <ul className="team-list">
           {me.teams.map((t) => (
-            <li key={t.id}>{t.name} <span className="badge">{t.role}</span></li>
+            <li key={t.id}>
+              {t.role === "student" ? t.name : <a href={`#/teams/${t.id}`}>{t.name}</a>} <span className="badge">{t.role}</span>
+            </li>
           ))}
         </ul>
       )}
@@ -151,6 +154,9 @@ export function AccountPage() {
         <button className="secondary" disabled={join.busy}>Join a team</button>
       </form>
       {join.error && <p className="form-error" role="alert">{join.error}</p>}
+      {session.usesTeamPages(me) && (
+        <p><a className="button primary" href="#/teams">👥 Your teams: progress, accounts and PINs</a></p>
+      )}
       {me.is_staff && (
         <p><a className="button secondary" href="/admin/">🛠 Open the admin (lessons, teams, students)</a></p>
       )}

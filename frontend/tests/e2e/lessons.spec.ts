@@ -65,10 +65,10 @@ test("every lesson challenge's solution passes in the browser's Python", async (
   await open(page);
   let checked = 0;
   for (const lesson of LESSONS) {
-    for (const pageNumber of lesson.challengePages) {
+    for (const { page: pageNumber, key } of lesson.challenges) {
       await page.goto(`/#/lesson/${lesson.id}/${pageNumber}`);
-      // Wait for this lesson's workspace (the previous one can still be on screen).
-      await page.waitForFunction((id) => window.__trainer?.key().startsWith(`lesson/${id}/`), lesson.id);
+      // Wait for this page's workspace: the previous one can still be on screen.
+      await page.waitForFunction((k) => window.__trainer?.key() === k, key);
       await runSolution(page);
       await expect(page.getByText("Challenge complete!"), `${lesson.id} page ${pageNumber}`).toBeVisible({ timeout: 30_000 });
       checked++;

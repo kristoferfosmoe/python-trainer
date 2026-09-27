@@ -1,7 +1,10 @@
 import secrets
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
+
+from .robot import RobotError, clean_robot
 
 # No 0/O or 1/I, so codes are easy to read aloud and type.
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -23,6 +26,17 @@ class Team(models.Model):
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
                                    related_name="+")
     created_at = models.DateTimeField(auto_now_add=True)
+    robot = models.JSONField(
+        default=dict, blank=True,
+        help_text="The team's real robot (ports and wheel sizes), used when students copy code to "
+                  "Pybricks. Empty means it's built like the Trainer Bot. Coaches set it on the team page.",
+    )
+
+    def clean(self):
+        try:
+            self.robot = clean_robot(self.robot)
+        except RobotError as error:
+            raise ValidationError({"robot": str(error)})
 
     def save(self, *args, **kwargs):
         if not self.join_code:

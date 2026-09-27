@@ -1,6 +1,7 @@
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { defineConfig, devices } from "@playwright/test";
+import { COACH } from "./tests/e2e/accounts";
 
 // CHROMIUM_PATH lets environments with a preinstalled Chromium skip the download.
 const executablePath = process.env.CHROMIUM_PATH || undefined;
@@ -25,6 +26,7 @@ export default defineConfig({
         `rm -f ${database}`,
         "uv run python manage.py migrate -v0",
         "uv run python manage.py import_content --no-check -v0",
+        `uv run python manage.py create_coach ${COACH.username} --password '${COACH.password}' > /dev/null`,
         `uv run python manage.py runserver 127.0.0.1:${BACKEND_PORT} --noreload`,
       ].join(" && "),
       cwd: "../backend",

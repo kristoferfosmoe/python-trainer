@@ -6,7 +6,14 @@ import { load } from "js-yaml";
 
 declare global {
   interface Window {
-    __trainer: { setCode: (code: string) => void; key: () => string; solution: () => string; skipToEnd: () => void };
+    __trainer: {
+      setCode: (code: string) => void;
+      key: () => string;
+      code: () => string;
+      runs: () => number;
+      solution: () => string;
+      skipToEnd: () => void;
+    };
   }
 }
 
@@ -20,8 +27,8 @@ const playground = new Map(yamlFiles(join(CONTENT, "challenges")).map((p) => [re
 export const SOLUTIONS = new Map<string, string>();
 for (const [id, challenge] of playground) SOLUTIONS.set(`playground/${id}`, challenge.solution);
 
-/** Each lesson's id and the (1-based) pages that have a challenge with goals. */
-export const LESSONS: { id: string; challengePages: number[] }[] = [];
+/** Each lesson's id, and its challenges with goals: their (1-based) page and editor key. */
+export const LESSONS: { id: string; challenges: { page: number; key: string }[] }[] = [];
 export let UNIT_COUNT = 0;
 for (const course of readdirSync(join(CONTENT, "courses"))) {
   const courseDir = join(CONTENT, "courses", course);
@@ -31,18 +38,18 @@ for (const course of readdirSync(join(CONTENT, "courses"))) {
     UNIT_COUNT++;
     for (const file of yamlFiles(unitDir).filter((f) => !f.endsWith("unit.yaml"))) {
       const lesson = read(file);
-      const challengePages: number[] = [];
+      const challenges: { page: number; key: string }[] = [];
       let page = 1;
       (lesson.blocks as Yaml[]).forEach((raw, index) => {
         const block = raw.ref ? { ...playground.get(raw.ref), ...raw } : raw;
         if (block.type === "challenge") {
           const id = raw.id ?? raw.ref ?? `block-${index + 1}`;
           if (block.solution) SOLUTIONS.set(`lesson/${lesson.id}/${id}`, block.solution);
-          if (block.goals?.length) challengePages.push(page);
+          if (block.goals?.length) challenges.push({ page, key: `lesson/${lesson.id}/${id}` });
         }
         if (block.type !== "text") page++;
       });
-      LESSONS.push({ id: lesson.id, challengePages });
+      LESSONS.push({ id: lesson.id, challenges });
     }
   }
 }
@@ -54,11 +61,17 @@ export async function open(page: Page, hash = "#/") {
 
 /** Run the code in the challenge workspace and skip to the end of the playback. */
 export async function runCode(page: Page, code?: string) {
-  if (code !== undefined) await page.evaluate((c) => window.__trainer.setCode(c), code);
+  if (code !== undefined) {
+    await page.evaluate((c) => window.__trainer.setCode(c), code);
+    // Wait for React to render the new code, so Run runs it.
+    await page.waitForFunction((c) => window.__trainer.code() === c, code);
+  }
   const workspace = page.locator(".workspace");
   const runs = Number(await workspace.getAttribute("data-runs"));
   await workspace.getByRole("button", { name: "▶ Run" }).click();
   await expect(workspace).toHaveAttribute("data-runs", String(runs + 1), { timeout: 30_000 });
+  // The hooks update just after the page does; skip with the new run's hooks.
+  await page.waitForFunction((n) => window.__trainer.runs() === n, runs + 1);
   await page.evaluate(() => window.__trainer.skipToEnd());
 }
 
@@ -83,4 +96,22 @@ export async function signUp(page: Page, username = uniqueName()) {
   await page.getByRole("button", { name: "Sign up" }).click();
   await expect(page.locator(".account-chip")).toContainText(username);
   return username;
+}
+
+export { COACH } from "./accounts";
+
+export async function signIn(page: Page, username: string, secret: string) {
+  await page.goto("/#/signin");
+  await page.getByLabel("Username").fill(username);
+  await page.getByLabel(/PIN/).fill(secret);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.locator(".account-chip")).toBeVisible();
+}
+
+export async function signOut(page: Page) {
+  await page.goto("/#/account");
+  await page.getByRole("button", { name: "Sign out" }).click();
+  // Signing out ends on the course map; wait for that before going anywhere else.
+  await expect(page.getByText("You're a guest")).toBeVisible();
+  await expect(page).toHaveURL(/#\/$/);
 }

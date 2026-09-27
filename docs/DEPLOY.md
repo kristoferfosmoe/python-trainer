@@ -100,12 +100,23 @@ Pick a username and a strong password (at least 10 characters). Then go to
 
 - **Teams → Add team**: give it a name. A **join code** (like `K7Q2MX`) is made
   automatically. Students type it when they sign up, or on their account page.
-- **Coaches** (other adults): **Users → Add user**. Set *Kind* to "Adult",
-  give them a strong password, then add them to the team as **Coach** under
-  **Memberships**. Coaches and mentors can see challenge solutions.
-- **A student forgot their PIN**: tick them in **Users**, then choose the
-  action "Give selected students a new PIN". The new PIN appears at the top of
-  the page.
+  (Coaches can also make teams in the app.)
+- **Coaches** (other adults): make their account on the server:
+
+  ```bash
+  docker compose exec web python manage.py create_coach coach_kim --team "Brick Builders"
+  ```
+
+  It asks for a password (at least 10 characters) and makes the team if it
+  doesn't exist yet. Or in the admin: **Users → Add user**, set *Kind* to
+  "Adult", then add them to the team as **Coach** under **Memberships**.
+  Coaches can also make more teams themselves, in the app.
+- **Everything else happens in the app**: coaches sign in and open
+  **👥 Teams** to see progress, make student accounts (with printable
+  sign-in cards), give new PINs, make mentors and describe the team's robot.
+- **A student forgot their PIN**: their coach can make a new one on the
+  student's page. In the admin, tick them in **Users**, then choose "Give
+  selected students a new PIN"; it appears at the top of the page.
 - **Lessons**: under **Curriculum → Lessons**. Saving a lesson runs all of its
   code first, and refuses the save if something is wrong. Lessons that come
   from files in `content/` are replaced on every deploy. To keep your own

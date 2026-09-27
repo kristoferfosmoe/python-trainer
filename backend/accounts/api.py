@@ -19,6 +19,7 @@ class TeamOut(Schema):
     id: int
     name: str
     role: str
+    robot: dict | None = None  # the team's real robot, for copying code to Pybricks
 
 
 class MeOut(Schema):
@@ -44,7 +45,7 @@ def me_data(user):
         "kind": user.kind,
         "is_staff": user.is_staff,
         "teams": [
-            {"id": m.team_id, "name": m.team.name, "role": m.role}
+            {"id": m.team_id, "name": m.team.name, "role": m.role, "robot": m.team.robot or None}
             for m in user.memberships.select_related("team").order_by("team__name")
         ],
     }
