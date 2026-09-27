@@ -6,7 +6,7 @@ on:
 
 jobs:
   simulator:
-    name: Simulator (Python)
+    name: Simulator and lessons (Python ${{ matrix.python }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -15,15 +15,43 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v6
-      - name: Run tests (includes every challenge solution in content/)
+      - name: Run tests (includes checking every lesson in content/)
         working-directory: sim
         run: uv run --python ${{ matrix.python }} pytest -q
 
+  backend:
+    name: Backend (PostgreSQL)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: trainer
+          POSTGRES_PASSWORD: trainer
+          POSTGRES_DB: trainer
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U trainer" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+      - name: Run tests
+        working-directory: backend
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_USER: trainer
+          POSTGRES_PASSWORD: trainer
+          POSTGRES_DB: trainer
+        run: |
+          uv run python manage.py makemigrations --check --dry-run
+          uv run pytest -q
+
   frontend:
-    name: Web app
+    name: Web app and browser tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
       - uses: actions/setup-node@v5
         with:
           node-version: 22
@@ -38,10 +66,20 @@ jobs:
           npm run typecheck
           npm test
           npm run build
-      - name: Browser tests (real Pyodide in Chromium)
+      - name: Browser tests (real Pyodide in Chromium, real Django backend)
         working-directory: frontend
         run: |
           npx playwright install --with-deps chromium
           npx playwright test
         env:
           CI: "true"
+
+  images:
+    name: Docker images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build the web and caddy images
+        run: |
+          docker build -f deploy/Dockerfile --target web -t python-trainer-web .
+          docker build -f deploy/Dockerfile --target caddy -t python-trainer-caddy .

@@ -1,0 +1,38 @@
+# Deploy to the EC2 server with one click (Actions tab → Deploy → Run workflow).
+# Optional: needs these repository secrets (see docs/DEPLOY.md):
+#   EC2_HOST         the server's domain name or IP
+#   EC2_USER         e.g. ubuntu
+#   EC2_SSH_KEY      a private key allowed to log in (a deploy-only key)
+#   EC2_KNOWN_HOSTS  the server's host key line (ssh-keyscan -H <host>)
+name: Deploy
+
+on:
+  workflow_dispatch:
+
+concurrency: deploy
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Pull and restart on the server
+        env:
+          SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.EC2_KNOWN_HOSTS }}
+          HOST: ${{ secrets.EC2_HOST }}
+          USER: ${{ secrets.EC2_USER }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy_key "$USER@$HOST" "set -e
+            cd ~/python-trainer
+            git fetch origin '$BRANCH'
+            git checkout -q '$BRANCH'
+            git pull --ff-only origin '$BRANCH'
+            cd deploy
+            docker compose up -d --build
+            docker image prune -f"

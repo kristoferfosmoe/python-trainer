@@ -134,9 +134,10 @@ SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
 
 if PRODUCTION:
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# Cookies only over HTTPS in production. (DJANGO_SECURE_COOKIES=false is only
+# for testing the production setup on plain http://localhost.)
+SESSION_COOKIE_SECURE = CSRF_COOKIE_SECURE = env_bool("DJANGO_SECURE_COOKIES", PRODUCTION)
 
 # Behind Caddy, the client's address is the last X-Forwarded-For entry.
 TRUST_FORWARDED_FOR = env_bool("DJANGO_TRUST_FORWARDED_FOR", PRODUCTION)

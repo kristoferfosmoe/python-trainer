@@ -85,6 +85,10 @@ class Lesson(models.Model):
     content = models.JSONField(default=dict, help_text='{"concepts": [...], "blocks": [...]}')
     version = models.PositiveIntegerField(default=1, editable=False)
     updated_at = models.DateTimeField(auto_now=True)
+    source = models.CharField(
+        max_length=200, blank=True, editable=False,
+        help_text="The file in content/ this lesson was imported from (empty if it was made in the admin).",
+    )
 
     class Meta:
         ordering = ["unit__course__order", "unit__order", "order", "slug"]

@@ -5,11 +5,20 @@ imported if any lesson has a problem.
     python manage.py import_content [--path ../content] [--no-check]
 """
 
+from pathlib import Path
+
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from curriculum.models import Course, Lesson, PlaygroundChallenge, Robot, Unit, World
+
+
+def _relative(path, root):
+    try:
+        return str(Path(path).relative_to(Path(root).parent))
+    except ValueError:
+        return str(path)
 
 
 class Command(BaseCommand):
@@ -78,6 +87,7 @@ class Command(BaseCommand):
                         lesson.summary = raw.get("summary", "")
                         lesson.order = lesson_order
                         lesson.content = content
+                        lesson.source = _relative(raw.get("source", ""), library.root)
                         lesson.save()
                         counts["lessons"] += 1
         self.stdout.write(self.style.SUCCESS(

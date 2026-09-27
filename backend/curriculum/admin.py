@@ -16,8 +16,21 @@ YAML_WIDGET = forms.Textarea(attrs={
 })
 
 
+class _ReadableDumper(yaml.SafeDumper):
+    """Writes multi-line text (Markdown, code) as readable `|` blocks."""
+
+
+def _represent_str(dumper, text):
+    style = "|" if "\n" in text else None
+    return dumper.represent_scalar("tag:yaml.org,2002:str", text, style=style)
+
+
+_ReadableDumper.add_representer(str, _represent_str)
+
+
 def dump_yaml(data):
-    return yaml.safe_dump(data, sort_keys=False, allow_unicode=True, width=100, default_flow_style=False)
+    return yaml.dump(data, Dumper=_ReadableDumper, sort_keys=False, allow_unicode=True, width=100,
+                     default_flow_style=False)
 
 
 def load_yaml(text, what):
@@ -31,6 +44,8 @@ def load_yaml(text, what):
 
 
 class LessonForm(forms.ModelForm):
+    """Saving a copy of a file-based lesson under a new slug makes it an admin lesson."""
+
     content_yaml = forms.CharField(
         label="Blocks (YAML)", widget=YAML_WIDGET,
         help_text="concepts: [...] and blocks: [...], in the same format as the files in content/courses/. "
@@ -43,6 +58,12 @@ class LessonForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if self.instance.source:
+            self.fields["content_yaml"].help_text = (
+                f"⚠️ This lesson comes from {self.instance.source} in the repository. Changes made here are "
+                "replaced the next time lessons are imported (every deploy). To keep changes, edit that file "
+                "instead, or give this lesson a new slug to make your own copy."
+            )
         content = self.instance.content if self.instance.pk else {"concepts": [], "blocks": [
             {"type": "text", "markdown": "Write the lesson here."},
         ]}
@@ -71,13 +92,15 @@ class LessonForm(forms.ModelForm):
 
     def save(self, commit=True):
         self.instance.content = self.cleaned_data["content"]
+        if "slug" in self.changed_data:
+            self.instance.source = ""
         return super().save(commit)
 
 
 @admin.register(Lesson)
 class LessonAdmin(admin.ModelAdmin):
     form = LessonForm
-    list_display = ["title", "slug", "unit", "order", "published", "version", "updated_at", "preview"]
+    list_display = ["title", "slug", "unit", "order", "published", "version", "from_file", "updated_at", "preview"]
     list_filter = ["published", "unit__course", "unit"]
     list_editable = ["order", "published"]
     search_fields = ["title", "slug"]
@@ -85,6 +108,10 @@ class LessonAdmin(admin.ModelAdmin):
         (None, {"fields": ["unit", "slug", "title", "summary", "order", "published"]}),
         ("Content", {"fields": ["content_yaml"]}),
     ]
+
+    @admin.display(description="From a file", boolean=True)
+    def from_file(self, lesson):
+        return bool(lesson.source)
 
     @admin.display(description="Preview")
     def preview(self, lesson):

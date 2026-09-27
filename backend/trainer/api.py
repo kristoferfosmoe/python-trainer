@@ -18,3 +18,13 @@ def csrf(request):
     """Sets the CSRF cookie the web app sends back with every change."""
     get_token(request)
     return {"ok": True}
+
+
+@api.get("/health", tags=["ops"])
+def health(request):
+    """For uptime checks: the web server is up and the database answers."""
+    from django.db import connection
+
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT 1")
+    return {"ok": True}

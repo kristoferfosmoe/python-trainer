@@ -179,3 +179,24 @@ def test_admin_pages_load():
         "/admin/curriculum/world/", "/admin/teams/team/", "/admin/accounts/user/", "/admin/progress/attempt/",
     ]:
         assert client.get(url).status_code == 200, url
+
+
+def test_lessons_remember_their_file():
+    lesson = Lesson.objects.get(slug="for-loops")
+    assert lesson.source == "content/courses/fll-python/04-loops/01-for-loops.yaml"
+    form = LessonForm(instance=lesson)
+    assert "comes from content/courses/fll-python/04-loops/01-for-loops.yaml" in form.fields["content_yaml"].help_text
+
+
+def test_health():
+    assert Client().get("/api/health").json() == {"ok": True}
+
+
+def test_admin_yaml_is_readable_and_round_trips():
+    from curriculum.admin import dump_yaml
+
+    for lesson in Lesson.objects.all():
+        text = dump_yaml(lesson.content)
+        assert yaml.safe_load(text) == lesson.content, lesson.slug
+    text = dump_yaml(Lesson.objects.get(slug="for-loops").content)
+    assert "markdown: |" in text and "code: |" in text

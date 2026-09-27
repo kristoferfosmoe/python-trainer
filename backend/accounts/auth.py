@@ -48,6 +48,7 @@ def sign_in(request, username, secret):
             status=429,
         )
     if user is None or not user.is_active or not user.check_password(secret or ""):
+        forget_old_failures()
         LoginFailure.objects.create(ip=ip)
         if user is not None:
             user.failed_logins += 1
