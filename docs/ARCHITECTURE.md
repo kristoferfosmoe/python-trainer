@@ -658,9 +658,19 @@ See **[DEPLOY.md](DEPLOY.md)** for the step-by-step guide. In short:
   which also unlocks the account.
 - **PIN security**: a PIN is short, so it gets extra protection:
   - Hashed the same way Django hashes passwords.
-  - After 5 wrong PINs, the account locks for 5 minutes.
+  - After 5 wrong PINs, the account locks for 5 minutes. Sign-ins to one
+    account take turns (the account's row is locked while it's checked),
+    so a burst of guesses can't slip past the lock.
   - After 30 failures from one IP address, that address is blocked for 15
-    minutes.
+    minutes. A school shares one address, so misses followed by the right
+    PIN for the same username are forgiven: those were typos, not guesses.
+    IPv6 addresses count per /64 network.
+  - Usernames that don't exist take as long to check as real ones.
+  - The admin's sign-in has the same rules.
+  - Per computer: at most 50 new accounts an hour and 40 wrong team codes
+    every 15 minutes. Per student: at most 600 saved challenge runs an hour.
+    Staff can lift a block early by deleting its rows in the admin
+    (Accounts → Login failures / Rate limit hits).
   - Obvious PINs are refused: repeats (`111111`, `121212`, `408408`) and
     counting (`123456`, `987654`).
   - Adults use full passwords (at least 10 characters, checked by Django's

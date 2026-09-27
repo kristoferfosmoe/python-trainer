@@ -38,10 +38,27 @@ class User(AbstractUser):
 
 
 class LoginFailure(models.Model):
-    """Failed sign-ins per IP address, to slow down PIN guessing."""
+    """Failed sign-ins per IP address (IPv6: per /64 network), to slow down
+    PIN guessing. A sign-in is recorded here while it's being checked, and
+    the record is removed if the PIN was right. A right PIN also removes the
+    earlier misses for that username from that address: those were typos,
+    not guesses (see accounts.auth)."""
 
     ip = models.GenericIPAddressField()
+    username = models.CharField(max_length=150, blank=True, default="", help_text="As typed, in lowercase")
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
         indexes = [models.Index(fields=["ip", "created_at"])]
+
+
+class RateLimitHit(models.Model):
+    """One use of something that's limited: a new account, a wrong team code
+    (see accounts.limits)."""
+
+    scope = models.CharField(max_length=20)
+    key = models.CharField(max_length=64)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["scope", "key", "created_at"])]

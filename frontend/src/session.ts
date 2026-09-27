@@ -134,7 +134,8 @@ function background(request: Promise<unknown>) {
     },
     (error) => {
       console.warn("Couldn't save to the server", error);
-      if (!(error instanceof ApiError && error.status === 400)) set({ unsaved: true });
+      // 400: the server won't take it. 429: too many runs for now (see progress/api.py).
+      if (!(error instanceof ApiError && (error.status === 400 || error.status === 429))) set({ unsaved: true });
     },
   );
   inFlight.add(tracked);

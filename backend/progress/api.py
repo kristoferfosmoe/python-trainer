@@ -1,8 +1,11 @@
 """A signed-in student's progress, saved code and challenge attempts."""
 
 import re
+from datetime import timedelta
 
+from django.conf import settings
 from django.db import transaction
+from django.utils import timezone
 from ninja import Router, Schema
 from ninja.errors import HttpError
 from ninja.security import django_auth
@@ -100,6 +103,10 @@ class AttemptIn(Schema):
 @router.post("/attempts")
 def record_attempt(request, data: AttemptIn):
     key = _check_key(data.key)
+    hour_ago = timezone.now() - timedelta(hours=1)
+    if Attempt.objects.filter(user=request.user, created_at__gte=hour_ago).count() >= settings.ATTEMPTS_MAX_PER_HOUR:
+        # Far more runs than anyone makes by hand; don't let a script fill the database.
+        raise HttpError(429, "That's a lot of runs! New ones will be saved again in a few minutes.")
     lesson = Lesson.objects.filter(slug=data.lesson_id).first() if data.lesson_id else None
     with transaction.atomic():
         Attempt.objects.create(

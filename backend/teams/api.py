@@ -140,7 +140,7 @@ class JoinIn(Schema):
 
 @router.post("/join", response=MeResponse)
 def join(request, data: JoinIn):
-    team = find_team(data.code)
+    team = find_team(request, data.code)
     Membership.objects.get_or_create(user=request.user, team=team, defaults={"role": STUDENT})
     return {"user": me_data(request.user)}
 

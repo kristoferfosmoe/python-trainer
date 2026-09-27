@@ -8,6 +8,7 @@ from ninja.utils import check_csrf
 
 from teams.models import Membership, Team
 
+from . import limits
 from .auth import SignInError, sign_in
 from .models import AVATARS, User
 from .pins import pin_problem, suggest_username, username_problem
@@ -57,9 +58,13 @@ def require_csrf(request):
         raise HttpError(403, "Your session expired. Reload the page and try again.")
 
 
-def find_team(code):
+def find_team(request, code):
+    """The team with this join code. Wrong codes are limited per computer,
+    so codes can't be found by trying them all."""
+    limits.check(request, limits.WRONG_CODE)
     team = Team.objects.filter(join_code=(code or "").strip().upper()).first()
     if team is None:
+        limits.count(request, limits.WRONG_CODE)
         raise HttpError(400, "We couldn't find a team with that code. Check it with your coach.")
     return team
 
@@ -75,13 +80,14 @@ class SignupIn(Schema):
 @router.post("/signup", response=MeResponse)
 def signup(request, data: SignupIn):
     require_csrf(request)
+    limits.check(request, limits.SIGNUP)
     username = data.username.strip()
     problem = username_problem(username) or pin_problem(data.pin)
     if problem:
         raise HttpError(400, problem)
     if User.objects.filter(username__iexact=username).exists():
         raise HttpError(400, "Someone already has that username. Try another one, or press 🎲 to make one up.")
-    team = find_team(data.join_code) if data.join_code.strip() else None
+    team = find_team(request, data.join_code) if data.join_code.strip() else None
     try:
         with transaction.atomic():
             user = User.objects.create_user(
@@ -95,6 +101,7 @@ def signup(request, data: SignupIn):
                 Membership.objects.create(user=user, team=team, role=Membership.Role.STUDENT)
     except IntegrityError:
         raise HttpError(400, "Someone already has that username. Try another one.")
+    limits.count(request, limits.SIGNUP)
     login(request, user)
     return {"user": me_data(user)}
 

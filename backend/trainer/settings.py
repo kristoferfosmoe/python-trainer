@@ -149,6 +149,10 @@ LOGIN_ACCOUNT_MAX_FAILURES = 5
 LOGIN_ACCOUNT_LOCK_MINUTES = 5
 LOGIN_IP_MAX_FAILURES = 30
 LOGIN_IP_WINDOW_MINUTES = 15
+# Per computer (accounts.limits) and per student (progress.api).
+SIGNUP_MAX_PER_HOUR = 50
+JOIN_CODE_MAX_FAILURES = 40  # per 15 minutes
+ATTEMPTS_MAX_PER_HOUR = 600
 
 # Lessons saved in the admin are checked in a separate process: in production,
 # in the checker container, reached through this socket (see curriculum.library).

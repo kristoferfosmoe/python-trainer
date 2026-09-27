@@ -299,7 +299,10 @@ sudo docker compose restart web
 - Students have no email or real name on file. Tell them not to use their
   real name as a username.
 - Sign-in protection: an account locks for 5 minutes after 5 wrong PINs, and
-  a computer is blocked for 15 minutes after 30 failed sign-ins.
+  a computer is blocked for 15 minutes after 30 failed sign-ins (typos
+  followed by the right PIN don't count). New accounts and wrong team codes
+  are limited per computer too. To lift a block early, delete the rows in
+  the admin under Accounts → Login failures or Rate limit hits.
 
 ---
 
