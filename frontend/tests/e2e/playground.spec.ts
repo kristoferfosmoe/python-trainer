@@ -39,13 +39,16 @@ test("every playground solution passes in the browser's Python", async ({ page }
   await open(page, "#/playground");
   const chips = page.getByRole("navigation", { name: "Challenges" }).getByRole("link");
   const count = await chips.count();
+  let checked = 0;
   for (let i = 0; i < count; i++) {
     const title = (await chips.nth(i).innerText()).replace(/^\d+\s*/, "").replace("✔", "").trim();
     await chips.nth(i).click();
     await expect(page.locator("#challenge-title")).toHaveText(title);
-    const solution = await page.evaluate(() => window.__trainer.solution());
-    if (!solution) continue;
-    await runCode(page, solution);
-    await expect(page.getByText("Challenge complete!"), await chips.nth(i).innerText()).toBeVisible({ timeout: 30_000 });
+    const key = await page.evaluate(() => window.__trainer.key());
+    if (!(await page.locator(".goals").count())) continue; // free play, no goals
+    await runSolution(page);
+    await expect(page.getByText("Challenge complete!"), key).toBeVisible({ timeout: 30_000 });
+    checked++;
   }
+  expect(checked).toBeGreaterThanOrEqual(6);
 });

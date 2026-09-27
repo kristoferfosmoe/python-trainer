@@ -46,14 +46,24 @@ function pyodideAssets(): Plugin {
   };
 }
 
+// In development, the Django backend runs separately (see README).
+const backendUrl = process.env.VITE_API_URL ?? "http://127.0.0.1:8000";
+const backendProxy = Object.fromEntries(
+  ["/api", "/admin", "/static"].map((path) => [path, { target: backendUrl, changeOrigin: false }]),
+);
+
 export default defineConfig({
   plugins: [react(), pyodideAssets()],
   optimizeDeps: { exclude: ["pyodide"] },
   worker: { format: "es" },
   server: {
     port: 5173,
-    // Lessons and the simulator's Python files live outside frontend/.
+    // The simulator's Python files live outside frontend/.
     fs: { allow: [repoRoot] },
+    proxy: backendProxy,
+  },
+  preview: {
+    proxy: backendProxy,
   },
   build: {
     // CodeMirror + React; Pyodide itself loads separately from /pyodide/.

@@ -2,11 +2,11 @@
 // challenge pages in lessons.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { runRequest, robot, startFor, worldFor } from "../content";
+import { robot as currentRobot, runRequest, startFor, worldFor } from "../content";
 import { lineAt } from "../playback";
 import { runner, useRunnerStatus } from "../sim/instance";
 import { RunTimeout } from "../sim/runner";
-import * as storage from "../storage";
+import * as session from "../session";
 import type { Challenge, KidError, Trace } from "../types";
 import { usePlayback } from "../usePlayback";
 import { ChallengeCard } from "./ChallengeCard";
@@ -38,8 +38,10 @@ export function runFailure(error: unknown): KidError {
 
 interface Props {
   challenge: Challenge;
-  /** Where the student's edits are saved in this browser. */
+  /** Where the student's code is saved: lesson/<lesson>/<block> or playground/<id>. */
   codeKey: string;
+  /** For challenges inside lessons, recorded with each attempt. */
+  lessonId?: string;
   /** Lesson text shown above the challenge's own instructions. */
   intro?: string;
   onSolved?: () => void;
@@ -47,9 +49,10 @@ interface Props {
   solvedAction?: React.ReactNode;
 }
 
-export function ChallengeWorkspace({ challenge, codeKey, intro, onSolved, solvedAction }: Props) {
+export function ChallengeWorkspace({ challenge, codeKey, lessonId, intro, onSolved, solvedAction }: Props) {
   const status = useRunnerStatus();
-  const [code, setCode] = useState(() => storage.savedCode(codeKey) ?? challenge.starter);
+  const robot = currentRobot();
+  const [code, setCode] = useState(() => session.draft(codeKey) ?? challenge.starter);
   const [trace, setTrace] = useState<Trace | null>(null);
   const [tracedCode, setTracedCode] = useState("");
   const [runError, setRunError] = useState<KidError | null>(null);
@@ -65,7 +68,7 @@ export function ChallengeWorkspace({ challenge, codeKey, intro, onSolved, solved
 
   const changeCode = (next: string) => {
     setCode(next);
-    storage.saveCode(codeKey, next);
+    session.saveDraft(codeKey, next);
   };
 
   const run = useCallback(async () => {
@@ -76,6 +79,17 @@ export function ChallengeWorkspace({ challenge, codeKey, intro, onSolved, solved
       const result = await runner.run(runRequest(challenge, code));
       setTrace(result);
       setTracedCode(code);
+      if (result.goals.length > 0) {
+        session.recordAttempt({
+          key: codeKey,
+          code,
+          passed: result.goals.every((g) => g.passed),
+          goals: result.goals.map((g) => ({ id: g.id, passed: g.passed })),
+          sim_version: result.sim_version,
+          lesson_id: lessonId,
+          block_id: lessonId ? challenge.id : undefined,
+        });
+      }
       if (hasWorld) playback.restart();
       else playback.seek(result.end.t);
     } catch (error) {
@@ -83,7 +97,7 @@ export function ChallengeWorkspace({ challenge, codeKey, intro, onSolved, solved
       setRunError(runFailure(error));
     }
     setRunCount((n) => n + 1);
-  }, [status, challenge, code, hasWorld, playback]);
+  }, [status, challenge, code, codeKey, lessonId, hasWorld, playback]);
 
   const goals = finished && trace && trace.goals.length > 0 ? trace.goals : null;
   const allPassed = goals !== null && goals.every((g) => g.passed);
@@ -114,6 +128,7 @@ export function ChallengeWorkspace({ challenge, codeKey, intro, onSolved, solved
     if (!import.meta.env.DEV) return;
     const hooks = {
       setCode: changeCode,
+      key: () => codeKey,
       solution: () => challenge.solution ?? "",
       skipToEnd: playback.skipToEnd,
     };

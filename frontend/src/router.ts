@@ -5,6 +5,9 @@ import { useEffect, useState } from "react";
 
 export type Route =
   | { page: "map" }
+  | { page: "signin" }
+  | { page: "signup" }
+  | { page: "account" }
   | { page: "lesson"; lessonId: string; pageNumber?: number }
   | { page: "playground"; challengeId?: string };
 
@@ -15,6 +18,7 @@ export function parseRoute(hash: string): Route {
     return { page: "lesson", lessonId: parts[1], pageNumber: Number.isInteger(pageNumber) && pageNumber > 0 ? pageNumber : undefined };
   }
   if (parts[0] === "playground") return { page: "playground", challengeId: parts[1] };
+  if (parts[0] === "signin" || parts[0] === "signup" || parts[0] === "account") return { page: parts[0] };
   return { page: "map" };
 }
 
@@ -22,6 +26,10 @@ export function href(route: Route): string {
   switch (route.page) {
     case "map":
       return "#/";
+    case "signin":
+    case "signup":
+    case "account":
+      return `#/${route.page}`;
     case "lesson":
       return `#/lesson/${encodeURIComponent(route.lessonId)}${route.pageNumber ? `/${route.pageNumber}` : ""}`;
     case "playground":

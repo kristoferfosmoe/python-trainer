@@ -1331,3 +1331,162 @@ a {
   font-size: 1rem;
   margin-top: 4px;
 }
+
+/* --- Accounts --------------------------------------------------------------------- */
+
+.splash {
+  display: grid;
+  place-items: center;
+  min-height: 60vh;
+  font-size: 1.3rem;
+  color: var(--muted);
+}
+
+.topbar .main-nav {
+  margin-right: auto;
+}
+
+.account-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.3em 0.9em;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.guest-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: var(--warning-soft);
+  border-color: var(--warning-border);
+}
+
+.banner-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.course-block {
+  display: grid;
+  gap: 20px;
+}
+
+.auth {
+  max-width: 520px;
+  margin: 24px auto;
+  display: grid;
+  gap: 8px;
+  padding: 24px 28px;
+}
+
+.auth h1 {
+  margin: 0 0 4px;
+}
+
+.auth h2 {
+  font-size: 1.1rem;
+  margin: 12px 0 0;
+}
+
+.auth label {
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+.auth input:not([type="checkbox"]) {
+  font: inherit;
+  padding: 0.55em 0.75em;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--editor-bg);
+  color: var(--text);
+  width: 100%;
+}
+
+.auth input.pin {
+  font-family: var(--mono);
+  font-size: 1.4rem;
+  letter-spacing: 0.4em;
+  max-width: 12em;
+}
+
+.auth .row {
+  display: flex;
+  gap: 8px;
+}
+
+.auth .row input {
+  flex: 1;
+}
+
+.auth .check {
+  font-weight: 400;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.auth .big {
+  margin-top: 12px;
+  font-size: 1.1rem;
+  padding: 0.65em;
+}
+
+.field-hint,
+.muted {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.form-error {
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.avatars {
+  border: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.avatars legend {
+  font-weight: 600;
+  margin-bottom: 6px;
+  padding: 0;
+}
+
+.avatar-choice {
+  font-size: 1.5rem;
+  width: 2.2em;
+  height: 2.2em;
+  padding: 0;
+  background: var(--card);
+  border: 2px solid var(--border);
+}
+
+.avatar-choice.chosen {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.team-list {
+  margin: 0;
+  padding-left: 1.2em;
+}

@@ -36,8 +36,35 @@ def _load(path):
     return data
 
 
+def resolve_blocks(lesson, playground_by_id):
+    """A copy of the lesson with block ids filled in and playground refs expanded."""
+    lesson = dict(lesson)
+    blocks = lesson.get("blocks")
+    if not isinstance(blocks, list):
+        return lesson
+    resolved = []
+    for index, block in enumerate(blocks):
+        block = dict(block)
+        ref = block.get("ref")
+        if block.get("type") == "challenge" and ref:
+            base = playground_by_id.get(ref)
+            if base is None:
+                raise ContentError(f"{lesson.get('id')}: challenge ref '{ref}' is not a playground challenge")
+            block = {**base, **block}
+            block.setdefault("id", ref)
+            block["type"] = "challenge"
+        block.setdefault("id", f"block-{index + 1}")
+        resolved.append(block)
+    lesson["blocks"] = resolved
+    return lesson
+
+
 class Library:
-    """Everything in a content/ folder: robot, worlds, playground challenges, courses."""
+    """Everything in a content/ folder: robot, worlds, playground challenges, courses.
+
+    Lessons are kept exactly as written (`raw`); `lessons()` gives them with
+    playground refs expanded and block ids filled in.
+    """
 
     def __init__(self, root):
         self.root = pathlib.Path(root)
@@ -45,49 +72,33 @@ class Library:
         self.worlds = {w["id"]: w for w in (_load(p) for p in sorted((self.root / "worlds").glob("*.yaml")))}
         self.playground = [_load(p) for p in sorted((self.root / "challenges").glob("*.yaml"))]
         self.playground_by_id = {c["id"]: c for c in self.playground}
+        courses_dir = self.root / "courses"
         self.courses = [
-            self.load_course(d) for d in sorted((self.root / "courses").iterdir()) if (d / "course.yaml").exists()
-        ] if (self.root / "courses").exists() else []
+            self.load_course(d) for d in sorted(courses_dir.iterdir()) if (d / "course.yaml").exists()
+        ] if courses_dir.exists() else []
 
     def load_course(self, course_dir):
         course = _load(course_dir / "course.yaml")
         course["units"] = []
         for unit_dir in sorted(d for d in course_dir.iterdir() if d.is_dir()):
             unit = _load(unit_dir / "unit.yaml")
-            unit["lessons"] = [
-                self.resolve_lesson(_load(p), p)
-                for p in sorted(unit_dir.glob("*.yaml"))
-                if p.name != "unit.yaml"
-            ]
+            unit["lessons"] = []
+            for p in sorted(unit_dir.glob("*.yaml")):
+                if p.name != "unit.yaml":
+                    lesson = _load(p)
+                    lesson["source"] = str(p)
+                    unit["lessons"].append(lesson)
             course["units"].append(unit)
         return course
 
-    def resolve_lesson(self, lesson, path=None):
-        """Fill in block ids and expand challenges that reference the playground."""
-        lesson["source"] = str(path) if path else None
-        blocks = lesson.get("blocks")
-        if not isinstance(blocks, list):
-            return lesson
-        resolved = []
-        for index, block in enumerate(blocks):
-            block = dict(block)
-            ref = block.get("ref")
-            if block.get("type") == "challenge" and ref:
-                base = self.playground_by_id.get(ref)
-                if base is None:
-                    raise ContentError(f"{lesson.get('id')}: challenge ref '{ref}' is not a playground challenge")
-                block = {**base, **block}
-                block.setdefault("id", ref)
-                block["type"] = "challenge"
-            block.setdefault("id", f"block-{index + 1}")
-            resolved.append(block)
-        lesson["blocks"] = resolved
-        return lesson
+    def resolve_lesson(self, lesson):
+        return resolve_blocks(lesson, self.playground_by_id)
 
-    def lessons(self):
+    def lessons(self, resolved=True):
         for course in self.courses:
             for unit in course["units"]:
-                yield from unit["lessons"]
+                for lesson in unit["lessons"]:
+                    yield self.resolve_lesson(lesson) if resolved else lesson
 
 
 # --- Checking -----------------------------------------------------------------------
@@ -104,7 +115,12 @@ def _choice_text(choice):
 
 
 class Checker:
-    """Finds problems in lessons. `run=False` skips running code (fast structural check)."""
+    """Finds problems in lessons. `run=False` skips running code (fast structural check).
+
+    `library` is anything with `robot`, `worlds` and `playground_by_id`
+    (a Library, or the backend's database equivalent). Lessons passed to
+    check_lesson must already be resolved (see resolve_blocks).
+    """
 
     def __init__(self, library, run=True):
         self.lib = library

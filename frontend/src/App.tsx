@@ -1,31 +1,48 @@
-import { useEffect } from "react";
-import { allLessons } from "./content";
-import { paginate } from "./lessonPages";
+import { useEffect, useState } from "react";
+import { loadCatalog } from "./content";
 import { useRoute } from "./router";
+import { initSession, useSession } from "./session";
 import { useRunnerStatus } from "./sim/instance";
+import { AccountPage, SignInPage, SignUpPage } from "./pages/AuthPages";
 import { CourseMap } from "./pages/CourseMap";
 import { LessonPage } from "./pages/LessonPage";
 import { PlaygroundPage } from "./pages/PlaygroundPage";
 
-// Test hook: where each lesson's challenge pages are, for browser tests.
-if (import.meta.env.DEV) {
-  (window as unknown as { __course: object }).__course = allLessons.map(({ lesson }) => ({
-    id: lesson.id,
-    challengePages: paginate(lesson.blocks)
-      .map((page, i) => ({ page: i + 1, block: page.find((b) => b.type === "challenge") }))
-      .filter((p) => p.block && "goals" in p.block && p.block.goals?.length)
-      .map((p) => p.page),
-  }));
+export default function App() {
+  const [loaded, setLoaded] = useState<"loading" | "ready" | { error: string }>("loading");
+
+  useEffect(() => {
+    Promise.all([loadCatalog(), initSession()]).then(
+      () => setLoaded("ready"),
+      (error: Error) => setLoaded({ error: error.message }),
+    );
+  }, []);
+
+  if (loaded === "loading") {
+    return <div className="splash">🤖 Loading Python Trainer…</div>;
+  }
+  if (loaded !== "ready") {
+    return (
+      <div className="card narrow">
+        <h1>Python Trainer can't start</h1>
+        <p>{loaded.error}</p>
+        <button className="primary" onClick={() => window.location.reload()}>Try again</button>
+      </div>
+    );
+  }
+  return <Shell />;
 }
 
-export default function App() {
+function Shell() {
   const route = useRoute();
   const status = useRunnerStatus();
+  const { me, unsaved } = useSession();
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [route]);
 
+  const inPlayground = route.page === "playground";
   return (
     <div className="app">
       <header className="topbar">
@@ -33,24 +50,39 @@ export default function App() {
           <span aria-hidden>🤖</span> Python Trainer
         </a>
         <nav className="main-nav" aria-label="Main">
-          <a href="#/" className={route.page !== "playground" ? "active" : ""} aria-current={route.page !== "playground" ? "page" : undefined}>
+          <a href="#/" className={!inPlayground ? "active" : ""} aria-current={!inPlayground ? "page" : undefined}>
             🗺️ Lessons
           </a>
-          <a href="#/playground" className={route.page === "playground" ? "active" : ""} aria-current={route.page === "playground" ? "page" : undefined}>
+          <a href="#/playground" className={inPlayground ? "active" : ""} aria-current={inPlayground ? "page" : undefined}>
             🎮 Playground
           </a>
         </nav>
+        {unsaved && (
+          <span className="status status-broken" role="status" title="We'll keep trying to save your work.">
+            ⚠ Not saved yet
+          </span>
+        )}
         <span className={`status status-${status}`} role="status">
           {status === "loading" && "Starting Python…"}
           {status === "ready" && "Python ready"}
           {status === "running" && "Running…"}
           {status === "broken" && "Python didn't start. Reload the page."}
         </span>
+        {me ? (
+          <a className="account-chip" href="#/account" title="Your account">
+            <span aria-hidden>{me.avatar}</span> {me.display_name}
+          </a>
+        ) : (
+          <a className="button secondary" href="#/signin">Sign in</a>
+        )}
       </header>
       <main>
         {route.page === "map" && <CourseMap />}
         {route.page === "lesson" && <LessonPage lessonId={route.lessonId} pageNumber={route.pageNumber} />}
         {route.page === "playground" && <PlaygroundPage challengeId={route.challengeId} />}
+        {route.page === "signin" && <SignInPage />}
+        {route.page === "signup" && <SignUpPage />}
+        {route.page === "account" && <AccountPage />}
       </main>
     </div>
   );

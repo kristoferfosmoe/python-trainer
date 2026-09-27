@@ -14,3 +14,9 @@ frontend/playwright-report/
 .DS_Store
 .idea/
 .vscode/
+
+# Backend
+backend/db.sqlite3
+backend/staticfiles/
+*.sqlite3
+.env

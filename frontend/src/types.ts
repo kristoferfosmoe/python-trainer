@@ -68,6 +68,14 @@ export interface Challenge {
   hints?: string[];
   starter: string;
   solution?: string;
+  /** Scripted hub button presses, e.g. a teammate pressing CENTER. */
+  buttons?: ButtonPress[];
+}
+
+export interface ButtonPress {
+  at: number; // ms
+  button: "LEFT" | "RIGHT" | "CENTER";
+  duration?: number;
 }
 
 // --- Trace -------------------------------------------------------------------
@@ -143,6 +151,7 @@ export interface RunRequest {
     realism?: string | boolean;
     start?: Pose;
     seed?: number;
+    buttons?: ButtonPress[];
   };
   goals?: GoalSpec[];
 }
@@ -182,25 +191,29 @@ export interface ChallengeBlock extends Challenge {
 
 export type Block = TextBlock | CodeBlock | QuizBlock | ChallengeBlock;
 
-export interface Lesson {
+export interface LessonSummary {
   id: string;
   title: string;
   summary: string;
-  concepts?: string[];
-  blocks: Block[];
 }
 
-export interface Unit {
+export interface Lesson extends LessonSummary {
+  concepts?: string[];
+  blocks: Block[];
+  version?: number;
+}
+
+export interface UnitSummary {
   id: string;
   title: string;
   icon?: string;
   summary: string;
-  lessons: Lesson[];
+  lessons: LessonSummary[];
 }
 
-export interface Course {
+export interface CourseSummary {
   id: string;
   title: string;
   summary: string;
-  units: Unit[];
+  units: UnitSummary[];
 }

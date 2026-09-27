@@ -1,0 +1,25 @@
+[project]
+name = "python-trainer-backend"
+version = "0.1.0"
+description = "Accounts, teams, lessons and progress for the Python Trainer"
+requires-python = ">=3.12"
+dependencies = [
+    "django>=6.1,<6.2",
+    "django-ninja>=1.7,<2",
+    "psycopg[binary]>=3.3",
+    "gunicorn>=26",
+    "whitenoise>=6.12",
+    "pyyaml>=6",
+]
+
+[dependency-groups]
+dev = ["pytest>=8", "pytest-django>=4.14"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "trainer.settings"
+python_files = ["tests.py", "test_*.py"]
+addopts = "-p no:cacheprovider"
+filterwarnings = ["ignore:No directory at:UserWarning"]
+
+[tool.uv]
+package = false

@@ -1,11 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { open, runSolution } from "./helpers";
+import { LESSONS, open, runSolution } from "./helpers";
 
 test("the course map lists every unit and lesson", async ({ page }) => {
   await open(page);
   await expect(page.getByRole("heading", { name: /Unit \d:/ })).toHaveCount(4);
-  await expect(page.locator(".lesson-tile")).toHaveCount(12);
-  await expect(page.getByText("0 of 12 lessons complete")).toBeVisible();
+  await expect(page.locator(".lesson-tile")).toHaveCount(LESSONS.length);
+  await expect(page.getByText(`0 of ${LESSONS.length} lessons complete`)).toBeVisible();
 });
 
 test("a student can complete lesson 1 from start to finish", async ({ page }) => {
@@ -43,7 +43,7 @@ test("a student can complete lesson 1 from start to finish", async ({ page }) =>
   await expect(page.getByRole("heading", { name: /Lesson 2: First Moves/ })).toBeVisible();
 
   await page.getByRole("link", { name: "🗺️ Lessons" }).click();
-  await expect(page.getByText("1 of 12 lessons complete")).toBeVisible();
+  await expect(page.getByText(`1 of ${LESSONS.length} lessons complete`)).toBeVisible();
   await expect(page.locator(".lesson-tile.done")).toHaveCount(1);
 });
 
@@ -63,9 +63,8 @@ test("the visualizer steps through a loop", async ({ page }) => {
 
 test("every lesson challenge's solution passes in the browser's Python", async ({ page }) => {
   await open(page);
-  const course = await page.evaluate(() => window.__course);
   let checked = 0;
-  for (const lesson of course) {
+  for (const lesson of LESSONS) {
     for (const pageNumber of lesson.challengePages) {
       await page.goto(`/#/lesson/${lesson.id}/${pageNumber}`);
       await expect(page.locator(".workspace")).toBeVisible();

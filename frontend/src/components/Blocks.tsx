@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { runRequest } from "../content";
 import { markdown } from "../markdown";
 import { runner, useRunnerStatus } from "../sim/instance";
-import * as storage from "../storage";
+import * as session from "../session";
 import type { CodeBlock, KidError, QuizBlock, TextBlock, Trace } from "../types";
 import { runFailure } from "./ChallengeWorkspace";
 import { CodeEditor } from "./CodeEditor";
@@ -32,7 +32,7 @@ interface CodeBlockProps {
 export function CodeBlockView({ block, lessonId }: CodeBlockProps) {
   const codeKey = `lesson/${lessonId}/${block.id}`;
   const status = useRunnerStatus();
-  const [code, setCode] = useState(() => storage.savedCode(codeKey) ?? block.code);
+  const [code, setCode] = useState(() => session.draft(codeKey) ?? block.code);
   const [trace, setTrace] = useState<Trace | null>(null);
   const [tracedCode, setTracedCode] = useState<string | null>(null);
   const [failure, setFailure] = useState<KidError | null>(null);
@@ -41,7 +41,7 @@ export function CodeBlockView({ block, lessonId }: CodeBlockProps) {
 
   const changeCode = (next: string) => {
     setCode(next);
-    storage.saveCode(codeKey, next);
+    session.saveDraft(codeKey, next);
   };
 
   const run = async (then: "edit" | "step") => {

@@ -41,6 +41,34 @@ def test_unknown_ref_is_an_error():
         LIBRARY.resolve_lesson({"id": "x", "blocks": [{"type": "challenge", "ref": "nope"}]})
 
 
+def test_raw_lessons_keep_refs():
+    raw = next(lesson for lesson in LIBRARY.lessons(resolved=False) if lesson["id"] == "for-loops")
+    assert any(block.get("ref") == "square-dance" and "solution" not in block for block in raw["blocks"])
+
+
+def test_check_in_a_subprocess():
+    import json
+    import subprocess
+    import sys
+
+    from conftest import CONTENT
+
+    lesson = next(lesson for lesson in LIBRARY.lessons(resolved=False) if lesson["id"] == "for-loops")
+    request = {"lesson": lesson, "robot": LIBRARY.robot, "worlds": LIBRARY.worlds, "playground": LIBRARY.playground_by_id}
+    src = str(CONTENT.parent / "sim" / "src")
+    result = subprocess.run(
+        [sys.executable, "-m", "trainer_content.check"], input=json.dumps(request), capture_output=True,
+        text=True, env={"PYTHONPATH": src}, timeout=60, check=True,
+    )
+    assert json.loads(result.stdout) == []
+    broken = dict(lesson, blocks=[{"type": "example", "code": "print(1/0)"}])
+    result = subprocess.run(
+        [sys.executable, "-m", "trainer_content.check"], input=json.dumps(dict(request, lesson=broken)),
+        capture_output=True, text=True, env={"PYTHONPATH": src}, timeout=60, check=True,
+    )
+    assert "ZeroDivisionError" in json.loads(result.stdout)[0]
+
+
 def test_checker_catches_mistakes():
     checker = Checker(LIBRARY)
     lesson = LIBRARY.resolve_lesson({

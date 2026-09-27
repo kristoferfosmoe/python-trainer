@@ -1,17 +1,34 @@
 // Plays a lesson one page at a time (see paginate for how pages are split).
 
-import { useEffect, useMemo } from "react";
-import { findLesson } from "../content";
+import { useEffect, useMemo, useState } from "react";
+import { fetchLesson, findLesson, useCatalog } from "../content";
 import { hasGoals, paginate } from "../lessonPages";
 import { href, navigate } from "../router";
 import * as progress from "../progress";
-import type { Block, ChallengeBlock, Lesson } from "../types";
+import type { Block, ChallengeBlock, Lesson, LessonSummary } from "../types";
 import { CodeBlockView, QuizBlockView, TextBlockView } from "../components/Blocks";
 import { ChallengeWorkspace } from "../components/ChallengeWorkspace";
 
 export function LessonPage({ lessonId, pageNumber }: { lessonId: string; pageNumber?: number }) {
+  useCatalog(); // re-render if the catalog reloads
   const found = findLesson(lessonId);
   const store = progress.useProgress();
+  const [lesson, setLesson] = useState<Lesson | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
+
+  useEffect(() => {
+    let current = true;
+    setLesson(null);
+    setFailed(null);
+    fetchLesson(lessonId).then(
+      (loaded) => current && setLesson(loaded),
+      (error: Error) => current && setFailed(error.message),
+    );
+    return () => {
+      current = false;
+    };
+  }, [lessonId, found?.course.id]);
+
   if (!found) {
     return (
       <div className="card narrow">
@@ -20,7 +37,17 @@ export function LessonPage({ lessonId, pageNumber }: { lessonId: string; pageNum
       </div>
     );
   }
-  const { lesson, unit, number, next } = found;
+  if (failed) {
+    return (
+      <div className="card narrow">
+        <h2>This lesson didn't load</h2>
+        <p>{failed}</p>
+        <p><a href="#/">Back to the lessons</a></p>
+      </div>
+    );
+  }
+  if (!lesson) return <p className="empty padded">⏳ Loading the lesson…</p>;
+  const { unit, number, next } = found;
   const state = store[lesson.id] ?? progress.lessonProgress(lesson.id);
   return <LessonPlayer key={lesson.id} lesson={lesson} unitTitle={`${unit.icon ?? ""} ${unit.title}`} number={number} next={next?.lesson ?? null} state={state} pageNumber={pageNumber} />;
 }
@@ -29,7 +56,7 @@ interface PlayerProps {
   lesson: Lesson;
   unitTitle: string;
   number: number;
-  next: Lesson | null;
+  next: LessonSummary | null;
   state: progress.LessonProgress;
   pageNumber?: number;
 }
@@ -51,10 +78,7 @@ function LessonPlayer({ lesson, unitTitle, number, next, state, pageNumber }: Pl
   const challenge = page.find((b): b is ChallengeBlock => b.type === "challenge");
   const isLast = index === pages.length - 1;
 
-  const onContinue = () => {
-    if (isLast) progress.finishLesson(lesson.id);
-    go(index + 1);
-  };
+  const onContinue = () => go(index + 1);
 
   return (
     <div className={`lesson ${challenge ? "lesson-wide" : ""}`}>
@@ -93,6 +117,7 @@ function LessonPlayer({ lesson, unitTitle, number, next, state, pageNumber }: Pl
               key={challenge.id}
               challenge={challenge}
               codeKey={`lesson/${lesson.id}/${challenge.id}`}
+              lessonId={lesson.id}
               intro={page.filter((b) => b.type === "text").map((b) => (b.type === "text" ? b.markdown : "")).join("\n\n")}
               onSolved={() => progress.markDone(lesson.id, challenge.id)}
               solvedAction={
@@ -145,7 +170,7 @@ function BlockView({ block, lessonId, done }: { block: Block; lessonId: string; 
 
 interface FinishedProps {
   lesson: Lesson;
-  next: Lesson | null;
+  next: LessonSummary | null;
   state: progress.LessonProgress;
   pages: Block[][];
   onGo: (page: number) => void;
@@ -155,9 +180,17 @@ function Finished({ lesson, next, state, pages, onGo }: FinishedProps) {
   const skipped = pages
     .map((page, i) => ({ i, block: page.find(hasGoals) }))
     .filter((p): p is { i: number; block: ChallengeBlock } => p.block !== undefined && !state.done.includes(p.block.id));
+  const unansweredQuiz = lesson.blocks.some((b) => b.type === "quiz" && !state.done.includes(b.id));
+  const complete = skipped.length === 0 && !unansweredQuiz;
+
+  // The lesson counts as complete once the student reaches the end with
+  // every quiz answered and every challenge solved.
+  useEffect(() => {
+    if (complete) progress.finishLesson(lesson.id);
+  }, [complete, lesson.id]);
   return (
     <div className="card finished">
-      {skipped.length === 0 ? (
+      {complete ? (
         <>
           <div className="big-emoji" aria-hidden>🎉</div>
           <h2>Lesson complete!</h2>
