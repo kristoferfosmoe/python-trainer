@@ -8,6 +8,7 @@ import { CourseMap } from "./pages/CourseMap";
 import { LessonPage } from "./pages/LessonPage";
 import { PlaygroundPage } from "./pages/PlaygroundPage";
 import { MemberPage, TeamPage, TeamsPage } from "./pages/TeamPages";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 export default function App() {
   const [loaded, setLoaded] = useState<"loading" | "ready" | { error: string }>("loading");
@@ -95,16 +96,18 @@ function Shell() {
         )}
       </header>
       <main>
-        {me && restored && <NotYou me={me} />}
-        {route.page === "map" && <CourseMap />}
-        {route.page === "lesson" && <LessonPage lessonId={route.lessonId} pageNumber={route.pageNumber} />}
-        {route.page === "playground" && <PlaygroundPage challengeId={route.challengeId} />}
-        {route.page === "signin" && <SignInPage />}
-        {route.page === "signup" && <SignUpPage />}
-        {route.page === "account" && <AccountPage />}
-        {route.page === "teams" && <TeamsPage />}
-        {route.page === "team" && <TeamPage teamId={route.teamId} />}
-        {route.page === "member" && <MemberPage teamId={route.teamId} username={route.username} />}
+        <ErrorBoundary resetKey={JSON.stringify(route)}>
+          {me && restored && <NotYou me={me} />}
+          {route.page === "map" && <CourseMap />}
+          {route.page === "lesson" && <LessonPage lessonId={route.lessonId} pageNumber={route.pageNumber} />}
+          {route.page === "playground" && <PlaygroundPage challengeId={route.challengeId} />}
+          {route.page === "signin" && <SignInPage />}
+          {route.page === "signup" && <SignUpPage />}
+          {route.page === "account" && <AccountPage />}
+          {route.page === "teams" && <TeamsPage />}
+          {route.page === "team" && <TeamPage teamId={route.teamId} />}
+          {route.page === "member" && <MemberPage teamId={route.teamId} username={route.username} />}
+        </ErrorBoundary>
       </main>
     </div>
   );

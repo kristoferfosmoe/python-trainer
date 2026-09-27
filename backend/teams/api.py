@@ -8,6 +8,7 @@ and never stored where anyone can read them.
 import random
 from collections import defaultdict
 
+from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Max, Q
 from django.shortcuts import get_object_or_404
@@ -16,21 +17,20 @@ from ninja import Router, Schema
 from ninja.errors import HttpError
 from ninja.security import django_auth
 
-from accounts.api import MeResponse, find_team, me_data
+from accounts.api import TEAM_FULL, MeResponse, find_team, me_data
 from accounts.models import AVATARS, User
 from accounts.pins import random_pin, suggest_username, username_problem
 from accounts.sessions import require_recent_password
 from curriculum.models import Lesson, PlaygroundChallenge
 from progress.models import Attempt, CodeDraft, LessonProgress
 
-from .models import Membership, Team, new_join_code
+from .models import Membership, Team, TeamFull, new_join_code
 from .permissions import LEADER_ROLES, can_manage_account, coaches_team, leads_team
 from .robot import RobotError, clean_robot
 
 router = Router(tags=["teams"], auth=django_auth)
 
 MAX_NEW_STUDENTS = 10  # per request: each new PIN takes a moment to hash
-MAX_TEAM_SIZE = 200
 MAX_ATTEMPTS_SHOWN = 2000
 STUDENT = Membership.Role.STUDENT
 MENTOR = Membership.Role.MENTOR
@@ -71,6 +71,15 @@ def _role(user, team):
     if membership and membership.role in LEADER_ROLES:
         return membership.role
     return "staff"
+
+
+def _no_room(room):
+    """What coaches see when there isn't room for the students they're adding."""
+    most = settings.TEAM_MAX_MEMBERS
+    if room == 0:
+        return f"Your team has {most} members, the most a team can have. Remove a member before adding another."
+    return (f"Your team has room for {room} more member{'' if room == 1 else 's'} (a team can have {most}). "
+            "Remove members before adding more, or add fewer.")
 
 
 def team_data(team):
@@ -142,7 +151,10 @@ class JoinIn(Schema):
 @router.post("/join", response=MeResponse)
 def join(request, data: JoinIn):
     team = find_team(request, data.code)
-    Membership.objects.get_or_create(user=request.user, team=team, defaults={"role": STUDENT})
+    try:
+        team.add_member(request.user, STUDENT)
+    except TeamFull:
+        raise HttpError(409, TEAM_FULL)
     return {"user": me_data(request.user)}
 
 
@@ -156,9 +168,10 @@ def my_teams(request):
     if not user.is_staff:
         teams = teams.filter(id__in=Membership.objects.filter(user=user, role__in=LEADER_ROLES).values("team"))
     teams = teams.annotate(students=Count("memberships", filter=Q(memberships__role=STUDENT)))
+    roles = dict(Membership.objects.filter(user=user, role__in=LEADER_ROLES).values_list("team", "role"))
     return {
         "teams": [
-            {"id": team.id, "name": team.name, "season": team.season, "role": _role(user, team),
+            {"id": team.id, "name": team.name, "season": team.season, "role": roles.get(team.id, "staff"),
              "students": team.students}
             for team in teams.order_by("name")
         ],
@@ -208,6 +221,8 @@ def team_dashboard(request, team_id: int):
         "team": team_data(team),
         "role": _role(request.user, team),
         "can_manage": coaches_team(request.user, team),
+        "members": len(memberships),
+        "max_members": settings.TEAM_MAX_MEMBERS,
         "students": [
             {
                 **_person(m, now),
@@ -274,8 +289,8 @@ def create_students(request, team_id: int, data: NewStudentsIn):
         raise HttpError(400, "Add at least one student.")
     if len(data.students) > MAX_NEW_STUDENTS:
         raise HttpError(400, f"Add at most {MAX_NEW_STUDENTS} students at a time.")
-    if team.memberships.count() + len(data.students) > MAX_TEAM_SIZE:
-        raise HttpError(400, f"A team can have at most {MAX_TEAM_SIZE} members.")
+    if len(data.students) > team.room():
+        raise HttpError(409, _no_room(team.room()))
     wanted, problems, taken = [], [], set()
     for number, student in enumerate(data.students, 1):
         username = student.username.strip()
@@ -294,6 +309,9 @@ def create_students(request, team_id: int, data: NewStudentsIn):
     created = []
     try:
         with transaction.atomic():
+            team.lock()  # another coach may be adding students right now
+            if len(wanted) > team.room():
+                raise HttpError(409, _no_room(team.room()))
             for username, display_name in wanted:
                 pin = random_pin()
                 user = User.objects.create_user(

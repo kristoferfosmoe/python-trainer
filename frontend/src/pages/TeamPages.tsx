@@ -335,6 +335,20 @@ function AddStudents({ data, onAdded }: { data: Dashboard; onAdded: () => void }
   const [made, setMade] = useState<{ done: number; of: number } | null>(null);
   const add = useAction();
   const list = coach.parseStudentList(text);
+  const room = Math.max(0, data.max_members - data.members);
+
+  if (room === 0 && cards.length === 0) {
+    return (
+      <section className="card stack">
+        <h2>➕ Add students</h2>
+        <p className="feedback warning" role="status">
+          Your team has {data.max_members} members, the most a team can have. Remove a member before adding another:
+          open their page from the list above and press <b>Remove from team</b>.
+        </p>
+      </section>
+    );
+  }
+  const tooMany = list.length > room;
 
   return (
     <section className="card stack">
@@ -366,10 +380,17 @@ function AddStudents({ data, onAdded }: { data: Dashboard; onAdded: () => void }
         <label htmlFor="new-students" className="sr-only">Students to add</label>
         <textarea id="new-students" rows={5} value={text} onChange={(e) => setText(e.target.value)}
           placeholder={"Sam\nPriya\nJ.T."} />
+        {tooMany && (
+          <p className="feedback warning" role="status">
+            Your team has room for {room} more member{room === 1 ? "" : "s"} (a team can have {data.max_members}).
+            Remove members before adding more, or add fewer.
+          </p>
+        )}
         <div className="row">
-          <button className="primary" disabled={add.busy || list.length === 0}>
+          <button className="primary" disabled={add.busy || list.length === 0 || tooMany}>
             {made ? `Making accounts… ${made.done} of ${made.of}` : `Make ${list.length || ""} account${list.length === 1 ? "" : "s"}`}
           </button>
+          <span className="muted">{data.members} of {data.max_members} places on the team are used.</span>
         </div>
       </form>
       {add.error && <p className="form-error" role="alert">{add.error}</p>}

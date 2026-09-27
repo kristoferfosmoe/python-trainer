@@ -498,6 +498,13 @@ erDiagram
 Any adult account can make a team and becomes its coach. Admins make coach
 accounts in the admin or with `manage.py create_coach`.
 
+A team has at most 100 members (`TEAM_MAX_MEMBERS`; students, mentors and
+coaches all count). When it's full, the team page asks the coach to remove
+a member before adding another, and a student using the join code is told
+to ask their coach to make room. The join code, sign-up, coach-made
+accounts, the admin and `create_coach` all check it, and adding members to
+one team takes turns, so two students can't both take the last place.
+
 Pass/fail is computed in the browser and reported to the server. A student
 could fake a pass. That's fine for a learning tool, and it's the trade-off
 for never running student code on the server.

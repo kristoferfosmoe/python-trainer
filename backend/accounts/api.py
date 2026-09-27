@@ -7,7 +7,7 @@ from ninja.errors import HttpError
 from ninja.security import django_auth
 from ninja.utils import check_csrf
 
-from teams.models import Membership, Team
+from teams.models import Membership, Team, TeamFull
 
 from . import limits
 from .auth import SignInError, check_credentials, sign_in
@@ -60,6 +60,9 @@ def require_csrf(request):
         raise HttpError(403, "Your session expired. Reload the page and try again.")
 
 
+TEAM_FULL = "That team is full, so you can't join it right now. Ask your coach to make room."
+
+
 def find_team(request, code):
     """The team with this join code. Wrong codes are limited per computer,
     so codes can't be found by trying them all."""
@@ -100,7 +103,9 @@ def signup(request, data: SignupIn):
                 avatar=data.avatar if data.avatar in AVATARS else AVATARS[0],
             )
             if team:
-                Membership.objects.create(user=user, team=team, role=Membership.Role.STUDENT)
+                team.add_member(user, Membership.Role.STUDENT)
+    except TeamFull:
+        raise HttpError(409, TEAM_FULL)
     except IntegrityError:
         raise HttpError(400, "Someone already has that username. Try another one.")
     limits.count(request, limits.SIGNUP)

@@ -81,7 +81,8 @@ executable instead of running `playwright install`.
 Sign in with your coach account and open **👥 Teams**:
 
 - **Make a team.** Its join code is on the team page. Students type it when
-  they sign up (or on their account page).
+  they sign up (or on their account page). A team can have up to 100
+  members (students, mentors and coaches).
 - **Or make the accounts yourself**: type one nickname per line (first names
   or initials, no last names) and print the sign-in cards. PINs are shown
   only once, but you can make a new PIN for anyone at any time (you'll type

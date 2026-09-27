@@ -14,7 +14,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from accounts.models import User
-from teams.models import Membership, Team
+from teams.models import Membership, Team, TeamFull
 
 
 class Command(BaseCommand):
@@ -52,5 +52,13 @@ class Command(BaseCommand):
                 if found is None:
                     found = Team.objects.create(name=team, season=season, created_by=user)
                     self.stdout.write(f"Made team {found.name} (join code {found.join_code}).")
-                Membership.objects.update_or_create(user=user, team=found, defaults={"role": Membership.Role.COACH})
+                membership = found.memberships.filter(user=user).first()
+                if membership:
+                    membership.role = Membership.Role.COACH
+                    membership.save(update_fields=["role"])
+                else:
+                    try:
+                        found.add_member(user, Membership.Role.COACH)
+                    except TeamFull:
+                        raise CommandError(f"{found.name} is full. Remove a member before adding another.")
                 self.stdout.write(f"{user.username} coaches {found.name}.")

@@ -40,10 +40,11 @@ if command_id=$(aws ssm send-command \
     --parameters "Version=$VERSION" \
     --query Command.CommandId --output text 2> "$errors_file"); then
     :
-elif grep -q InvalidDocument "$errors_file"; then
-    # A stack from before the deploy document. Remove this once every
-    # server's stack is updated: updating it also takes away the deploy
-    # role's right to run AWS-RunShellScript.
+elif grep -q -e InvalidDocument -e "ssm:SendCommand on resource: .*:document/$document\b" "$errors_file"; then
+    # A stack from before the deploy document: AWS says the document doesn't
+    # exist, or (checking permissions first) that the role may not use it.
+    # Remove this once every server's stack is updated: updating it also
+    # takes away the deploy role's right to run AWS-RunShellScript.
     echo "::warning::The AWS stack has no $document document yet, so this deploy runs the old way (any shell command)." \
         "Update the stack with deploy/aws/python-trainer.yml (docs/DEPLOY.md) so GitHub can only deploy commits on main."
     # The document runs these with sh (dash on Ubuntu), so no bash-only features.

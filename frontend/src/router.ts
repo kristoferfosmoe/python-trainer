@@ -15,8 +15,17 @@ export type Route =
   | { page: "team"; teamId: number }
   | { page: "member"; teamId: number; username: string };
 
+/** One part of the address, decoded. A broken %-escape (from a mangled link) is kept as typed. */
+function decodePart(part: string): string {
+  try {
+    return decodeURIComponent(part);
+  } catch {
+    return part;
+  }
+}
+
 export function parseRoute(hash: string): Route {
-  const parts = hash.replace(/^#\/?/, "").split("/").filter(Boolean).map(decodeURIComponent);
+  const parts = hash.replace(/^#\/?/, "").split("/").filter(Boolean).map(decodePart);
   if (parts[0] === "lesson" && parts[1]) {
     const pageNumber = Number(parts[2]);
     return { page: "lesson", lessonId: parts[1], pageNumber: Number.isInteger(pageNumber) && pageNumber > 0 ? pageNumber : undefined };

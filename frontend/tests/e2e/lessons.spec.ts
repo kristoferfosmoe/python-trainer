@@ -8,6 +8,13 @@ test("the course map lists every unit and lesson", async ({ page }) => {
   await expect(page.getByText(`0 of ${LESSONS.length} lessons complete`)).toBeVisible();
 });
 
+test("a mangled link shows a message, not a blank page", async ({ page }) => {
+  await open(page, "#/lesson/%E0%A4%A");
+  await expect(page.getByRole("heading", { name: "Lesson not found" })).toBeVisible();
+  await page.getByRole("link", { name: "Back to the lessons" }).click();
+  await expect(page.getByRole("heading", { name: /Unit \d+:/ }).first()).toBeVisible();
+});
+
 test("a student can complete lesson 1 from start to finish", async ({ page }) => {
   await open(page);
   await page.getByRole("link", { name: /Start: Hello, Python!/ }).click();
