@@ -581,7 +581,14 @@ practice quizzes.
     `localStorage`.
   - **Signed-in students** get them from `/api/me/state`. Changes show
     instantly and are sent to the server in the background (drafts after an
-    800 ms pause). A "⚠ Not saved yet" pill appears if saving fails.
+    800 ms pause). A "⚠ Not saved yet" pill appears if saving fails, and
+    the save is tried again (after 5 seconds, then less often, up to once a
+    minute, and as soon as the connection comes back); only the newest
+    version of a draft or a lesson's progress is resent. If the server has
+    signed the student out (a new PIN, or the session ran out), the pill
+    says to sign in again, and the waiting work is sent when that same
+    student signs in (never as someone else). Leaving the page with work
+    still unsaved asks first.
     Signing out first sends anything still waiting to be saved.
   - **Signing up or in as a guest** merges the guest's progress into the
     account, then clears it from the browser.

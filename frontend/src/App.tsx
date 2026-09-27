@@ -37,7 +37,7 @@ export default function App() {
 function Shell() {
   const route = useRoute();
   const status = useRunnerStatus();
-  const { me, unsaved, restored } = useSession();
+  const { me, unsaved, signedOut, restored } = useSession();
 
   const firstRoute = useRef(true);
   useEffect(() => {
@@ -69,10 +69,16 @@ function Shell() {
             </a>
           )}
         </nav>
-        {unsaved && (
-          <span className="status status-broken" role="status" title="We'll keep trying to save your work.">
-            ⚠ Not saved yet
-          </span>
+        {signedOut ? (
+          <a className="status status-broken" role="status" href="#/signin" title="Your work is kept until you sign in again.">
+            ⚠ Signed out: sign in again to save your work
+          </a>
+        ) : (
+          unsaved && (
+            <span className="status status-broken" role="status" title="We'll keep trying to save your work.">
+              ⚠ Not saved yet
+            </span>
+          )
         )}
         <span className={`status status-${status}`} role="status">
           {status === "loading" && "Starting Python…"}

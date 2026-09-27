@@ -41,7 +41,9 @@ interface Saved {
 
 export interface SessionState extends Saved {
   me: Me | null;
-  unsaved: boolean; // a save to the server failed; we'll retry
+  unsaved: boolean; // a save to the server failed; it's tried again
+  /** The server signed the student out (a new PIN, or the session ran out): their work waits until they sign in again. */
+  signedOut: boolean;
   /** Still signed in from an earlier visit. On a shared computer, that might be someone else. */
   restored: boolean;
 }
@@ -49,7 +51,7 @@ export interface SessionState extends Saved {
 const GUEST_KEY = "guest:v1";
 const EMPTY: Saved = { lessons: {}, solved: [], drafts: {} };
 const listeners = new Set<() => void>();
-let state: SessionState = { ...EMPTY, me: null, unsaved: false, restored: false };
+let state: SessionState = { ...EMPTY, me: null, unsaved: false, signedOut: false, restored: false };
 
 function set(change: Partial<SessionState>) {
   state = { ...state, ...change };
@@ -126,34 +128,117 @@ function persistGuest() {
 }
 
 // --- Server sync -----------------------------------------------------------------
+//
+// Every change is a save with a key. A lesson's progress and an editor's code
+// only need their newest version sent; each challenge run is a save of its own.
+// A save that fails because of the network or the server is kept and tried
+// again: after 5 seconds, then less and less often, and as soon as the
+// connection comes back. If the server has signed the student out, their
+// saves wait until the same student signs in again (someone else signing in
+// on this computer never gets them). Saves the server refuses (like a program
+// that's too long) are dropped, since sending them again wouldn't help.
 
+interface Save {
+  key: string;
+  seq: number; // newer saves of the same key have bigger numbers
+  user: string; // whose work it is
+  path: string;
+  method: "PUT" | "POST";
+  body: unknown;
+}
+
+const FIRST_RETRY_MS = 5_000;
+const LAST_RETRY_MS = 60_000;
+let seq = 0;
 const inFlight = new Set<Promise<void>>();
+const unsent = new Map<string, Save>();
+let retryDelay = FIRST_RETRY_MS;
+let retryTimer: ReturnType<typeof setTimeout> | null = null;
+let returnHash: string | null = null; // where the student was when they were signed out
 
-function background(request: Promise<unknown>) {
-  const tracked = request.then(
+const worthRetrying = (error: unknown) =>
+  !(error instanceof ApiError) || error.status === 0 || error.status === 401 || error.status >= 500;
+
+function save(key: string, path: string, method: Save["method"], body: unknown) {
+  if (state.me) void send({ key, seq: ++seq, user: state.me.username, path, method, body });
+}
+
+function send(item: Save): Promise<void> {
+  const tracked = api(item.path, { method: item.method, body: item.body }).then(
     () => {
-      if (state.unsaved) set({ unsaved: false });
+      if ((unsent.get(item.key)?.seq ?? Infinity) <= item.seq) unsent.delete(item.key);
+      retryDelay = FIRST_RETRY_MS;
+      if (state.unsaved && unsent.size === 0) set({ unsaved: false });
     },
     (error) => {
       console.warn("Couldn't save to the server", error);
-      // 400: the server won't take it. 429: too many runs for now (see progress/api.py).
-      if (!(error instanceof ApiError && (error.status === 400 || error.status === 429))) set({ unsaved: true });
+      if (!worthRetrying(error)) return;
+      if ((unsent.get(item.key)?.seq ?? -1) < item.seq) unsent.set(item.key, item);
+      if (error instanceof ApiError && error.status === 401) {
+        if (!state.signedOut && typeof window !== "undefined") returnHash = window.location.hash;
+        set({ unsaved: true, signedOut: true });
+      } else {
+        set({ unsaved: true });
+        scheduleRetry();
+      }
     },
   );
   inFlight.add(tracked);
   void tracked.finally(() => inFlight.delete(tracked));
+  return tracked;
+}
+
+function scheduleRetry() {
+  if (retryTimer !== null) return;
+  retryTimer = setTimeout(retryNow, retryDelay);
+  retryDelay = Math.min(retryDelay * 2, LAST_RETRY_MS);
+}
+
+function retryNow() {
+  if (retryTimer !== null) clearTimeout(retryTimer);
+  retryTimer = null;
+  const me = state.me;
+  if (!me || state.signedOut) return;
+  for (const item of [...unsent.values()]) if (sameUser(item.user, me.username)) void send(item);
+}
+
+const sameUser = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+
+/** After a sign-in: send the work that was waiting, if it's this student's.
+ * Anyone else's is dropped, never sent as this student. */
+async function sendWaiting(user: Me) {
+  const waiting = [...unsent.values()];
+  unsent.clear();
+  await Promise.all(waiting.filter((item) => sameUser(item.user, user.username)).map(send));
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("online", retryNow);
+  window.addEventListener("beforeunload", (event) => {
+    if (unsent.size > 0) event.preventDefault(); // "Leave site? Changes you made may not be saved."
+  });
 }
 
 const draftTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+const saveDraftNow = (key: string) => save(`draft:${key}`, "/drafts", "PUT", { key, code: state.drafts[key] });
 
 /** Send drafts still waiting for their pause, and wait until every save is done. */
 async function flushSaves() {
   for (const [key, timer] of draftTimers) {
     clearTimeout(timer);
-    background(api("/drafts", { method: "PUT", body: { key, code: state.drafts[key] } }));
+    saveDraftNow(key);
   }
   draftTimers.clear();
+  retryNow();
   await Promise.all(inFlight);
+}
+
+/** Where to go back to after signing in again (see signedOut). */
+export function takeReturnHash(): string | null {
+  const hash = returnHash;
+  returnHash = null;
+  return hash;
 }
 
 // --- Starting up and signing in/out ------------------------------------------------
@@ -171,10 +256,12 @@ export const dismissRestored = () => set({ restored: false });
 
 async function loadAccount(user: Me) {
   const saved = await api<Saved>("/me/state");
-  set({ ...saved, me: user, unsaved: false });
+  set({ ...saved, me: user, unsaved: unsent.size > 0 });
 }
 
 async function afterSignIn(user: Me) {
+  await sendWaiting(user); // before loading the account, so it includes them
+  set({ signedOut: false });
   const guest = readGuest();
   if (hasProgress(guest)) {
     await api("/me/import", { method: "POST", body: guest });
@@ -206,7 +293,7 @@ export async function signIn(username: string, secret: string) {
 export async function signOut() {
   await flushSaves(); // so nothing the student just did is lost
   await api("/auth/logout", { method: "POST" });
-  set({ ...readGuest(), me: null, unsaved: false, restored: false });
+  set({ ...readGuest(), me: null, unsaved: false, signedOut: false, restored: false });
   await loadCatalog();
 }
 
@@ -245,7 +332,7 @@ function updateLesson(lessonId: string, change: (p: LessonProgress) => LessonPro
   const after = change(before);
   if (after === before) return;
   set({ lessons: { ...state.lessons, [lessonId]: after } });
-  if (state.me) background(api(`/progress/${encodeURIComponent(lessonId)}`, { method: "PUT", body: after }));
+  if (state.me) save(`progress:${lessonId}`, `/progress/${encodeURIComponent(lessonId)}`, "PUT", after);
   else persistGuest();
 }
 
@@ -277,7 +364,7 @@ export function saveDraft(key: string, code: string) {
     key,
     setTimeout(() => {
       draftTimers.delete(key);
-      background(api("/drafts", { method: "PUT", body: { key, code: state.drafts[key] } }));
+      saveDraftNow(key);
     }, 800),
   );
 }
@@ -302,5 +389,5 @@ export function recordAttempt(attempt: AttemptData) {
       persistGuest();
     }
   }
-  if (state.me) background(api("/attempts", { method: "POST", body: attempt }));
+  save(`attempt:${seq + 1}`, "/attempts", "POST", attempt);
 }
