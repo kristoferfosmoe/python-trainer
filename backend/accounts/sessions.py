@@ -22,6 +22,17 @@ def is_adult(user):
     return user.is_authenticated and (user.kind == user.Kind.ADULT or user.is_staff)
 
 
+def start_adult_session(session):
+    session[STARTED] = session[SEEN] = time.time()
+    session.set_expiry(settings.ADULT_SESSION_HOURS * 3600)
+
+
+def on_sign_in(sender, request, user, **kwargs):
+    """At sign-in (the app's or the admin's), so even that response's cookie is short-lived."""
+    if request is not None and is_adult(user):
+        start_adult_session(request.session)
+
+
 class AdultSessionMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
@@ -32,8 +43,7 @@ class AdultSessionMiddleware:
             now = time.time()
             started, seen = session.get(STARTED), session.get(SEEN)
             if started is None or seen is None:
-                session[STARTED] = session[SEEN] = now
-                session.set_expiry(settings.ADULT_SESSION_HOURS * 3600)
+                start_adult_session(session)  # signed in before this rule existed
             elif now - started > settings.ADULT_SESSION_HOURS * 3600 or now - seen > settings.ADULT_IDLE_MINUTES * 60:
                 logout(request)
             elif now - seen > 60:  # saving the session on every request would be wasteful

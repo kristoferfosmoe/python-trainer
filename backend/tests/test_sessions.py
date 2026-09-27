@@ -21,6 +21,11 @@ def set_session(client, **values):
     session.save()
 
 
+def test_a_coachs_sign_in_cookie_is_short_lived(client, coach, settings):
+    response = post(client, "/api/auth/login", {"username": "coach_kim", "secret": COACH_PASSWORD})
+    assert response.cookies["sessionid"]["max-age"] == settings.ADULT_SESSION_HOURS * 3600
+
+
 def test_coaches_are_signed_out_after_a_while_without_use(client, coach, settings):
     signed_in(client, "coach_kim", COACH_PASSWORD)
     assert client.session.get_expiry_age() == settings.ADULT_SESSION_HOURS * 3600
