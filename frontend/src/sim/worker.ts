@@ -14,13 +14,14 @@ const simFiles = import.meta.glob(["../../../sim/src/**/*.py", "!../../../sim/sr
 
 const SIM_ROOT = "/home/pyodide/trainer";
 
-export type WorkerRequest = { type: "run"; id: number; payload: string };
+export type WorkerRequest = { type: "run" | "mission"; id: number; payload: string };
 export type WorkerResponse =
   | { type: "ready"; pythonVersion: string; loadMs: number }
   | { type: "result"; id: number; json: string }
   | { type: "failed"; id: number | null; message: string };
 
 let runProgram: ((payload: string) => string) | null = null;
+let runMission: ((payload: string) => string) | null = null;
 
 async function start() {
   const started = performance.now();
@@ -36,6 +37,7 @@ async function start() {
   pyodide.runPython(`import sys\nsys.path.insert(0, "${SIM_ROOT}")`);
   const runner = pyodide.pyimport("trainer_sim.runner");
   runProgram = runner.run_program_json as (payload: string) => string;
+  runMission = pyodide.pyimport("trainer_sim.missions").run_mission_json as (payload: string) => string;
   const version = pyodide.runPython("import sys; sys.version.split()[0]") as string;
   post({ type: "ready", pythonVersion: version, loadMs: Math.round(performance.now() - started) });
 }
@@ -51,10 +53,11 @@ const ready = start().catch((error: unknown) => {
 
 self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
   const request = event.data;
-  if (request.type !== "run") return;
+  if (request.type !== "run" && request.type !== "mission") return;
   try {
     await ready;
-    post({ type: "result", id: request.id, json: runProgram!(request.payload) });
+    const run = request.type === "mission" ? runMission! : runProgram!;
+    post({ type: "result", id: request.id, json: run(request.payload) });
   } catch (error) {
     post({ type: "failed", id: request.id, message: String(error) });
   }

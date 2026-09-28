@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { frameIndexAt, hubAt, poseAt, recentCollision, sensorAt } from "../playback";
-import { drawMat, layoutFor } from "../render/drawMat";
+import { drawMat, layoutFor, type MatScene } from "../render/drawMat";
 import type { Pose, RobotSpec, Trace, WorldSpec } from "../types";
 
 interface Props {
@@ -9,9 +9,11 @@ interface Props {
   start: Pose;
   trace: Trace | null;
   time: number;
+  /** Mission Mode: models and attachments to draw at this moment. */
+  mission?: Pick<MatScene, "models" | "arms">;
 }
 
-export function MatView({ world, robot, start, trace, time }: Props) {
+export function MatView({ world, robot, start, trace, time, mission }: Props) {
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const [width, setWidth] = useState(0);
@@ -45,8 +47,9 @@ export function MatView({ world, robot, start, trace, time }: Props) {
       hubLight: trace ? hubAt(trace, time).light : undefined,
       sensorColor: trace && colorPort ? (sensorAt(trace, `${colorPort}.color`, time) as string) : undefined,
       bumping: trace ? recentCollision(trace, time) : false,
+      ...(mission ? { ...mission, breakTrailJumps: true } : {}),
     });
-  }, [world, robot, start, trace, time, width]);
+  }, [world, robot, start, trace, time, width, mission]);
 
   return (
     <div className="mat" ref={wrap}>

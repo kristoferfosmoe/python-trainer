@@ -1,0 +1,119 @@
+id: pick-your-attachments
+title: Pick Your Attachments
+tier: 6
+summary: Three runs, and you choose the attachment for each one. Score as much as you can.
+runs:
+  - start: {x: 200, y: 330, heading: 0}
+    choose: {E: [forklift, pusher]}
+  - start: {x: 200, y: 520, heading: 0}
+    choose: {E: [forklift, pusher]}
+  - start: {x: 200, y: 700, heading: 0}
+    choose: {E: [forklift, pusher]}
+    attachments: {F: sweeper}
+solution_attachments: [{E: pusher}, {E: forklift}, {E: forklift}]
+models: [crate, bell, sample, buoy, flag]
+time_limit: 150
+stars: [100, 125, 145]
+instructions: |
+  Now it's your plan. You have **three runs** and **2:30**. Five missions
+  are on the field (not the top lane yet): the crate, the bell, the sample,
+  the buoy and the flag.
+
+  Pick the attachment for each run on the cards above the code. Run 3 also
+  gets the sweeper on F. Think about which attachment fits which missions:
+  the **forklift** reaches 240 mm ahead and has a hook, and the **pusher**
+  only sticks out 10 mm (so the robot's own numbers work).
+
+  Stars: ⭐ 100 points, ⭐⭐ 125, ⭐⭐⭐ 145. Precision tokens count too: come
+  back to Home after every run!
+goals: []
+hints:
+  - "Run 1 can do the crate *and* the bell: after the crate, back into Home, turn, move 180 mm over to the bell's lane, and turn back."
+  - "An attachment that goes on between runs starts wherever its motor left off. Reset its angle at the start of the run: `sweeper.reset_angle(90)` (the sweeper goes on folded)."
+  - "The pusher is 10 mm long: with it, driving 800 mm puts the crate on the dock. With the forklift, the crate ends up 230 mm further."
+starter: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction, Button
+  from pybricks.robotics import DriveBase
+  from pybricks.tools import wait
+
+  hub = PrimeHub()
+  hub.system.set_stop_button(Button.BLUETOOTH)
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  arm = Motor(Port.E)
+  sweeper = Motor(Port.F)
+
+
+  def crate_run():
+      drive_base.straight(800)
+      drive_base.straight(-800)
+
+
+  def second_run():
+      pass
+
+
+  def third_run():
+      pass
+
+
+  for run in [crate_run, second_run, third_run]:
+      while Button.CENTER not in hub.buttons.pressed():
+          wait(10)
+      run()
+solution: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction, Button
+  from pybricks.robotics import DriveBase
+  from pybricks.tools import wait
+
+  hub = PrimeHub()
+  hub.system.set_stop_button(Button.BLUETOOTH)
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  arm = Motor(Port.E)
+  sweeper = Motor(Port.F)
+
+
+  def crate_and_bell():
+      # Pusher on E: it sticks out 10 mm past the front.
+      drive_base.straight(800)          # crate onto the dock
+      drive_base.straight(-800)
+      drive_base.turn(90)               # face down the table
+      drive_base.straight(180)          # to the bell's lane
+      drive_base.turn(-90)
+      drive_base.straight(990)          # ring once...
+      drive_base.straight(-100)
+      drive_base.straight(100)          # ...and twice
+      drive_base.straight(-990)
+
+
+  def sample():
+      arm.reset_angle(0)
+      drive_base.straight(560)
+      arm.run_target(300, 45)
+      drive_base.straight(-600)
+
+
+  def buoy_and_flag():
+      arm.reset_angle(0)
+      sweeper.reset_angle(90)           # the sweeper went on folded, but its motor didn't know
+      drive_base.straight(670)
+      sweeper.run_target(300, 0)
+      drive_base.straight(200)
+      sweeper.run_target(300, 90)
+      drive_base.straight(290)
+      arm.run_target(300, 60)
+      arm.run_target(300, 0)
+      drive_base.straight(-1160)
+
+
+  for run in [crate_and_bell, sample, buoy_and_flag]:
+      while Button.CENTER not in hub.buttons.pressed():
+          wait(10)
+      run()

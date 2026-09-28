@@ -722,14 +722,15 @@ See **[DEPLOY.md](DEPLOY.md)** for the step-by-step guide. In short:
 ```
 python-trainer/
   sim/          Python simulator + simulated pybricks package (pytest, uv);
-                trainer_content: lesson loader and checker (reused by the backend)
-  backend/      Django project: accounts, teams, curriculum, progress (pytest)
+                trainer_sim/missions: Mission Mode (docs/MISSION_MODE.md);
+                trainer_content: lesson and game loader and checker (reused by the backend)
+  backend/      Django project: accounts, teams, curriculum, progress, missions (pytest)
   frontend/     React + TS app: course map, lesson player, visualizer,
                 editor, renderer, worker (vitest, Playwright)
-  content/      Courses, playground challenges, worlds and the robot (YAML)
+  content/      Courses, playground challenges, worlds, robots and Mission Mode games (YAML)
   deploy/       Dockerfile, docker-compose.yml, Caddyfile, deploy and backup scripts;
                 aws/: the CloudFormation stack, first-boot and Systems Manager scripts
-  docs/         This document and DEPLOY.md
+  docs/         This document, MISSION_MODE.md and DEPLOY.md
 ```
 
 ## 14. Roadmap
@@ -743,7 +744,8 @@ python-trainer/
 | **M5: Rest of the curriculum** ✅ | Units 5–12: decisions, functions, lists and dictionaries, sensors, line following, proportional control, mission runner, debugging |
 | **M6: Coach tools and real robots** ✅ | Team pages: progress grid, coach-made accounts with printable cards, PIN resets, mentors, a student's code. "Run on your robot": code rewritten for the team's robot, ready for Pybricks. The hub's stop button in the simulator. |
 | **M7: Continuous deployment** ✅ | One CloudFormation stack (server, ECR, backups, GitHub OIDC role); every merge to main is tested, built, deployed through Systems Manager, health-checked, and rolled back if it doesn't start |
-| **Later** | Coaches running a student's code in the simulator (needs the separate origin in §12), a friendlier lesson authoring UI with a world editor, an AI tutor (a proxy endpoint on the server), pushable mission models, simulating a team's own robot, season-specific mats, sending code straight to the hub over Bluetooth, `hub_menu` and `multitask` in the simulator |
+| **M8: Mission Mode** ✅ | The 🏆 Missions tab: attachments on the arm motors, mission models that react (push, flip, press, hook, open), scoring with precision tokens, one-program matches with a simulated teammate, "works every time" across seeds, and Harbor Rescue: 17 challenges in 7 tiers that unlock in order. See [MISSION_MODE.md](MISSION_MODE.md). |
+| **Later** | Coaches running a student's code in the simulator (needs the separate origin in §12), a friendlier lesson authoring UI with a world editor, an AI tutor (a proxy endpoint on the server), more mission games and load on attachments, simulating a team's own robot, season-specific mats, sending code straight to the hub over Bluetooth, `hub_menu` and `multitask` in the simulator |
 
 ## 15. Decision log
 
@@ -765,3 +767,4 @@ python-trainer/
 | 2026-09-27 | Running on a real robot: lessons keep using the Trainer Bot, and code is rewritten for the team's robot (ports, directions, wheel sizes) when it's copied to Pybricks. Simulating each team's own robot comes later. |
 | 2026-09-27 | The center button stops programs in the simulator, like on a real hub. The Press to Start lesson teaches `set_stop_button()`. |
 | 2026-09-27 | Continuous deployment: CI builds images and pushes them to ECR, and deploys over AWS Systems Manager with GitHub OIDC. No SSH and no stored keys. Automatic rollback when the health check doesn't report the new version. Infrastructure is one CloudFormation stack. |
+| 2026-09-28 | Mission Mode ([MISSION_MODE.md](MISSION_MODE.md)): attachments and mission models in 2.5D (footprints plus heights), fixed model types instead of a rule engine, one program per match with a simulated teammate, challenges that unlock in order, no coach features or leaderboards yet. Lessons and the playground run exactly as before (checked against fingerprints saved first). |

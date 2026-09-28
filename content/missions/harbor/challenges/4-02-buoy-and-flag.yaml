@@ -1,0 +1,77 @@
+id: buoy-and-flag
+title: Buoy and Flag
+tier: 4
+summary: Two attachments, two missions, one trip. Write a function for each mission.
+runs:
+  - start: {x: 200, y: 700, heading: 0}
+    attachments: {E: forklift, F: sweeper}
+models: [buoy, flag]
+time_limit: 40
+instructions: |
+  Now the robot has **both** attachments: the forklift on **E** and the
+  sweeper on **F**. Do both middle-lane missions in one trip:
+
+  1. **Flip the buoy** with the sweeper, then fold the sweeper back in.
+  2. **Raise the flag** with the forklift.
+
+  Put each mission in its **own function**, so your program reads like a
+  plan: `flip_buoy()`, then `raise_flag()`.
+goals:
+  - {type: model_state, model: buoy, state: flipped}
+  - {type: model_state, model: flag, state: raised}
+  - {type: must_use, construct: def}
+hints:
+  - "After flipping the buoy, the robot is 1070 mm along. The flag needs it at 1360 mm, so drive 290 mm more."
+  - "Fold the sweeper back with `sweeper.run_target(300, 90)` before you go on."
+starter: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+
+  hub = PrimeHub()
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  arm = Motor(Port.E)
+  sweeper = Motor(Port.F)
+
+
+  def flip_buoy():
+      drive_base.straight(670)
+
+
+  def raise_flag():
+      pass
+
+
+  flip_buoy()
+  raise_flag()
+solution: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+
+  hub = PrimeHub()
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  arm = Motor(Port.E)
+  sweeper = Motor(Port.F)
+
+
+  def flip_buoy():
+      drive_base.straight(670)
+      sweeper.run_target(300, 0)
+      drive_base.straight(200)
+      sweeper.run_target(300, 90)
+
+
+  def raise_flag():
+      drive_base.straight(290)
+      arm.run_target(300, 60)
+
+
+  flip_buoy()
+  raise_flag()

@@ -13,6 +13,9 @@ declare global {
       runs: () => number;
       solution: () => string;
       skipToEnd: () => void;
+      // Mission Mode only: pick each run's attachments.
+      choose?: (picks: Record<string, string>[]) => void;
+      picks?: () => Record<string, string>[];
     };
   }
 }
@@ -26,6 +29,17 @@ const yamlFiles = (dir: string) => readdirSync(dir).filter((f) => f.endsWith(".y
 const playground = new Map(yamlFiles(join(CONTENT, "challenges")).map((p) => [read(p).id as string, read(p)]));
 export const SOLUTIONS = new Map<string, string>();
 for (const [id, challenge] of playground) SOLUTIONS.set(`playground/${id}`, challenge.solution);
+
+/** Mission Mode challenges in ladder order (content/missions/<game>/challenges/), with the attachments their solutions need. */
+export const MISSIONS: { id: string; title: string; picks: Record<string, string>[] }[] = [];
+for (const game of readdirSync(join(CONTENT, "missions")).sort()) {
+  const dir = join(CONTENT, "missions", game, "challenges");
+  for (const file of yamlFiles(dir)) {
+    const challenge = read(file);
+    SOLUTIONS.set(`mission/${challenge.id}`, challenge.solution);
+    MISSIONS.push({ id: challenge.id, title: challenge.title, picks: challenge.solution_attachments ?? [] });
+  }
+}
 
 /** Each lesson's id, and its challenges with goals: their (1-based) page and editor key. */
 export const LESSONS: { id: string; challenges: { page: number; key: string }[] }[] = [];

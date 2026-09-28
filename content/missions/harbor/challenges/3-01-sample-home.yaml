@@ -1,0 +1,52 @@
+id: sample-home
+title: Bring Back the Sample
+tier: 3
+summary: Hook the sample off its post and carry it back to Home.
+runs:
+  - start: {x: 200, y: 520, heading: 0}
+    attachments: {E: forklift}
+models: [sample]
+time_limit: 30
+instructions: |
+  The **sample** is a ring sitting on a short post, **800 mm** ahead of the
+  robot's center. The tip of the forklift is a **hook**.
+
+  1. With the fork **level**, drive until the hook is inside the ring.
+  2. **Lift** the arm: the ring comes off the post and hangs on the hook.
+  3. Drive back to **Home**, still carrying it.
+
+  A sample brought back to Home scores **30 points**.
+goals:
+  - {type: mission_done, mission: M03, points: 30}
+hints:
+  - "The hook is 240 mm ahead of the robot's center when the fork is level. Drive 800 - 240 = 560 mm."
+  - "Lift to 45 degrees, then back up at least 600 mm so the sample is inside Home."
+starter: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+
+  hub = PrimeHub()
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  arm = Motor(Port.E)
+
+  drive_base.straight(560)
+  drive_base.straight(-600)
+solution: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+
+  hub = PrimeHub()
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  arm = Motor(Port.E)
+
+  drive_base.straight(560)
+  arm.run_target(300, 45)
+  drive_base.straight(-600)

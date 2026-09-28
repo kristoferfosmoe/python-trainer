@@ -101,13 +101,25 @@ export interface EndInfo {
 
 export interface TraceEvent {
   t: number;
-  type: "collision" | "stalled" | "beep" | "display" | "light";
+  type:
+    | "collision" | "stalled" | "beep" | "display" | "light"
+    // Mission Mode
+    | "blocked" | "state" | "pressed" | "interruption" | "run_end" | "teammate";
   line: number;
   what?: string;
   frequency?: number;
   duration?: number;
   text?: string;
   color?: string;
+  // Mission Mode
+  model?: string;
+  state?: string;
+  port?: string;
+  run?: number;
+  how?: string;
+  action?: "press" | "place";
+  tokens?: number;
+  presses?: number;
 }
 
 export interface GoalResult {
@@ -145,6 +157,8 @@ export interface Trace {
   structure: CodeStructure[];
   goals: GoalResult[];
   stats: { lines: number; sim_ms: number; wall_ms: number };
+  /** Only for Mission Mode runs (trainer_sim.missions). */
+  mission?: MissionTrace;
 }
 
 export interface RunRequest {
@@ -221,4 +235,174 @@ export interface CourseSummary {
   title: string;
   summary: string;
   units: UnitSummary[];
+}
+
+// --- Mission Mode (content/missions/, trainer_sim/missions) ----------------------------
+
+export interface AttachmentSpec {
+  id: string;
+  name: string;
+  kind: "lift" | "sweep" | "slide";
+  port: "E" | "F";
+  summary?: string;
+  mount?: [number, number];
+  direction?: number;
+  length: number;
+  width?: number;
+  mount_z?: number;
+  rest_angle?: number;
+  min_angle?: number;
+  max_angle?: number;
+  gears?: number;
+  travel?: number;
+  hook?: boolean | { at?: number };
+  z?: [number, number];
+}
+
+export interface ModelSpec {
+  id: string;
+  type: "block" | "lever" | "button" | "loop" | "flag" | "gate";
+  label?: string;
+  hidden?: boolean;
+  at?: [number, number];
+  size?: [number, number];
+  r?: number;
+  angle?: number;
+  hinge?: [number, number];
+  length?: number;
+  width?: number;
+  to?: number;
+  states?: string[];
+  pole?: [number, number];
+  [key: string]: unknown;
+}
+
+/** A model's state at one moment (see Model.snapshot in trainer_sim/missions/models.py). */
+export interface ModelState {
+  state: string;
+  hidden: boolean;
+  x?: number;
+  y?: number;
+  z?: number;
+  angle?: number;
+  presses?: number;
+  down?: boolean;
+}
+
+export interface MissionScoreRow {
+  id: string;
+  title: string;
+  points: number;
+}
+
+export interface MissionRunLog {
+  run: number;
+  start: number;
+  end: number | null;
+  ended: "home" | "interrupted" | null;
+  attachments: Record<string, string>;
+}
+
+export interface MissionTrace {
+  initial: Record<string, ModelState>;
+  changes: [frame: number, model: string, state: ModelState][];
+  arms: Record<string, (number | null)[]>;
+  mounts: [frame: number, port: string, attachment: string | null][];
+  attachments: Record<string, AttachmentSpec>;
+  runs: MissionRunLog[];
+  home: string;
+  score: {
+    total: number;
+    missions: MissionScoreRow[];
+    tokens: number;
+    token_start: number;
+    token_points: number;
+    timeline: [t: number, total: number][];
+  };
+  stars: number;
+  thresholds: [number, number, number] | null;
+  seeds: { seed: number; score: number; passed: boolean }[];
+}
+
+export interface MissionTier {
+  id: number;
+  icon: string;
+  title: string;
+  summary: string;
+}
+
+export interface MissionInfo {
+  id: string;
+  title: string;
+  score: unknown[];
+}
+
+export interface GameSpec {
+  id: string;
+  title: string;
+  summary?: string;
+  tiers: MissionTier[];
+  field: WorldSpec;
+  home: string;
+  models: ModelSpec[];
+  attachments: AttachmentSpec[];
+  robot: RobotSpec;
+  missions: MissionInfo[];
+  precision_tokens?: { start: number; points: number[] };
+}
+
+export interface MissionRunSpec {
+  start?: Partial<Pose>;
+  attachments?: Record<string, string>;
+  choose?: Record<string, string[]>;
+  rest?: Record<string, number>;
+}
+
+export interface MissionChallenge {
+  id: string;
+  title: string;
+  tier: number;
+  summary?: string;
+  instructions?: string;
+  runs?: MissionRunSpec[];
+  models?: string[];
+  missions?: string[];
+  goals?: GoalSpec[];
+  stars?: [number, number, number];
+  seeds?: number[];
+  realism?: Realism;
+  time_limit?: number;
+  handling_time?: number;
+  start_button?: string;
+  hints?: string[];
+  starter: string;
+  solution?: string;
+  solution_attachments?: Record<string, string>[];
+}
+
+/** One challenge on the ladder (GET /api/missions). `unlocked` is null for guests. */
+export interface LadderChallenge {
+  id: string;
+  title: string;
+  tier: number;
+  summary: string;
+  unlocked: boolean | null;
+  stars: number;
+  best_score: number;
+}
+
+export interface LadderGame {
+  id: string;
+  title: string;
+  summary?: string;
+  tiers: MissionTier[];
+  challenges: LadderChallenge[];
+}
+
+export interface MissionRunRequest {
+  code: string;
+  game: GameSpec;
+  challenge: MissionChallenge;
+  /** Attachments picked for each run, e.g. [{E: "pusher"}, {E: "forklift"}]. */
+  choices: Record<string, string>[];
 }

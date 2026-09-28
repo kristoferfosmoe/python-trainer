@@ -3,7 +3,9 @@
 // Headings are clockwise from +x in the world, which is also clockwise on
 // screen, so angles can be used as-is after the flip.
 
+import type { ArmState } from "../missions";
 import type { ColorName, Pose, RobotSpec, WorldSpec } from "../types";
+import { drawArms, drawModels, type ModelView } from "./drawMissions";
 
 export const MAT_COLORS: Record<ColorName, string> = {
   black: "#1f2328",
@@ -31,6 +33,11 @@ export interface MatScene {
   sensorColor?: string;
   bumping?: boolean;
   showZones?: boolean;
+  // Mission Mode only:
+  models?: ModelView[];
+  arms?: ArmState[];
+  /** Don't draw the trail across a jump (the teammate picked the robot up). */
+  breakTrailJumps?: boolean;
 }
 
 export interface MatLayout {
@@ -68,8 +75,10 @@ export function drawMat(ctx: CanvasRenderingContext2D, layout: MatLayout, scene:
   for (const shape of world.shapes ?? []) drawShape(ctx, shape);
   if (scene.showZones !== false) for (const zone of world.zones ?? []) drawZone(ctx, zone, s);
   for (const obstacle of world.obstacles ?? []) drawObstacle(ctx, obstacle, s);
-  if (scene.trail) drawTrail(ctx, scene.trail, s);
+  if (scene.models) drawModels(ctx, scene.models, s, (text, x, y) => drawLabel(ctx, text, x, y, s, "#1f2937"));
+  if (scene.trail) drawTrail(ctx, scene.trail, s, scene.breakTrailJumps);
   drawRobot(ctx, scene, s);
+  if (scene.arms) drawArms(ctx, scene.pose, scene.arms, s);
 
   ctx.restore();
 }
@@ -203,7 +212,7 @@ function drawObstacle(ctx: CanvasRenderingContext2D, obstacle: NonNullable<World
   }
 }
 
-function drawTrail(ctx: CanvasRenderingContext2D, trail: NonNullable<MatScene["trail"]>, s: number) {
+function drawTrail(ctx: CanvasRenderingContext2D, trail: NonNullable<MatScene["trail"]>, s: number, breakJumps = false) {
   if (trail.count < 2) return;
   ctx.save();
   ctx.strokeStyle = "rgba(229, 72, 77, 0.55)";
@@ -211,7 +220,11 @@ function drawTrail(ctx: CanvasRenderingContext2D, trail: NonNullable<MatScene["t
   ctx.setLineDash([6 / s, 5 / s]);
   ctx.beginPath();
   ctx.moveTo(trail.x[0], trail.y[0]);
-  for (let i = 1; i < trail.count; i++) ctx.lineTo(trail.x[i], trail.y[i]);
+  for (let i = 1; i < trail.count; i++) {
+    const jumped = breakJumps && Math.hypot(trail.x[i] - trail.x[i - 1], trail.y[i] - trail.y[i - 1]) > 60;
+    if (jumped) ctx.moveTo(trail.x[i], trail.y[i]);
+    else ctx.lineTo(trail.x[i], trail.y[i]);
+  }
   ctx.stroke();
   ctx.restore();
 }

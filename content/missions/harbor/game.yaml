@@ -1,0 +1,144 @@
+# Harbor Rescue: the robot game for Mission Mode (an invented theme, not a
+# real FLL season). See docs/MISSION_MODE.md for the format.
+#
+# The table is laid out in lanes that start in Home (x 0-420, y 0-760):
+#   lane 1 (y 150)  the bell at the far end
+#   lane 2 (y 330)  the crate, and the dock beyond it
+#   lane 3 (y 520)  the sample on its post, and the lab beyond it
+#   middle (y 700)  the buoy lever on its left side, the flag at the far end
+#   top    (y 1000) the lighthouse lever, the harbor gate, the barrel, the warehouse
+id: harbor
+title: Harbor Rescue
+summary: Ring the bell, light the lighthouse and bring the cargo in. A robot game with 7 missions.
+robot: mission-bot
+home: home
+
+tiers:
+  - {id: 1, icon: "🟢", title: First Missions, summary: One mission at a time, straight from Home. No attachments yet.}
+  - {id: 2, icon: "🦾", title: Arms, summary: "Attachments on the arm motors: lift, swing, and find where the arm is."}
+  - {id: 3, icon: "🪝", title: Carry and Deliver, summary: Hook the sample and bring it where it belongs.}
+  - {id: 4, icon: "🔗", title: Combos, summary: Several missions in one trip. One mission can open the way to the next.}
+  - {id: 5, icon: "🧭", title: Navigation, summary: "Real-world wobble is on: use the gyro and the color sensor to get there every time."}
+  - {id: 6, icon: "🏁", title: Matches, summary: "Several runs in one program: wait in Home, swap attachments, press to go."}
+  - {id: 7, icon: "🏆", title: Tournament, summary: The whole field in 2:30. It has to work every time.}
+
+field:
+  id: harbor-field
+  name: Harbor
+  size: [2362, 1143]
+  background: white
+  grid: 100
+  start: {x: 200, y: 330, heading: 0}
+  shapes:
+    - {type: rect, x: 0, y: 0, w: 420, h: 760, color: cyan}
+    - {type: rect, x: 1000, y: 230, w: 300, h: 200, color: yellow}
+    - {type: circle, x: 1450, y: 520, r: 100, color: green}
+    - {type: rect, x: 2000, y: 880, w: 362, h: 263, color: orange}
+    - {type: line, points: [[420, 700], [1250, 700]], width: 20, color: black}
+  zones:
+    - {id: home, label: Home, type: rect, x: 0, y: 0, w: 420, h: 760}
+    - {id: dock, label: Dock, type: rect, x: 1000, y: 230, w: 300, h: 200}
+    - {id: lab, label: Lab, type: circle, x: 1450, y: 520, r: 100}
+    - {id: warehouse, label: Warehouse, type: rect, x: 2000, y: 880, w: 362, h: 263}
+
+models:
+  - id: crate
+    type: block
+    label: Crate
+    at: [750, 330]
+    size: [80, 80]
+    z: [0, 60]
+  - id: bell
+    type: button
+    label: Bell
+    at: [1320, 150]
+    size: [40, 120]
+    z: [0, 100]
+    depth: 15
+  - id: sample
+    type: loop
+    label: Sample
+    at: [1000, 520]
+    r: 25
+    z: [50, 90]
+    post_z: 30
+  - id: buoy
+    type: lever
+    label: Buoy
+    hinge: [1000, 890]
+    length: 100
+    width: 20
+    angle: 90             # hanging down toward the middle lane
+    to: 0                 # knocked flat, pointing right
+    z: [20, 70]
+    states: [standing, flipped]
+  - id: flag
+    type: flag
+    label: Flag
+    at: [1600, 700]
+    size: [60, 60]
+    handle_z: 70
+    raise_z: 120
+    pole: [1665, 700]
+  - id: lighthouse
+    type: lever
+    label: Lighthouse lever
+    hinge: [1100, 1125]
+    length: 120
+    width: 20
+    angle: 90             # hanging down into the top lane
+    to: 0
+    z: [20, 70]
+    states: [dark, lit]
+    on:
+      lit: {open: harbor-gate}
+  - id: harbor-gate
+    type: gate
+    label: Harbor gate
+    at: [1500, 1000]
+    size: [20, 240]
+    z: [0, 120]
+  - id: barrel
+    type: block
+    label: Barrel
+    at: [1750, 1000]
+    r: 35
+    z: [0, 70]
+
+missions:
+  - id: M01
+    title: Crate to the Dock
+    score:
+      - {when: {model: crate, in_zone: dock}, points: 20}
+  - id: M02
+    title: Ring the Bell
+    score:
+      - {when: {model: bell, presses: 2}, points: 20}
+      - {when: {model: bell, presses: 1}, points: 10}
+  - id: M03
+    title: Bring Back the Sample
+    score:
+      - {when: {model: sample, in_zone: home}, points: 30}
+      - {when: {model: sample, state: dropped, in_zone: lab}, points: 25}
+      - {when: {model: sample, state: [carried, dropped]}, points: 10}
+  - id: M04
+    title: Flip the Buoy
+    score:
+      - {when: {model: buoy, state: flipped}, points: 15}
+  - id: M05
+    title: Raise the Flag
+    score:
+      - {when: {model: flag, state: raised}, points: 20}
+  - id: M06
+    title: Light the Lighthouse
+    score:
+      - {when: {model: lighthouse, state: lit}, points: 20}
+  - id: M07
+    title: Barrel to the Warehouse
+    score:
+      - {when: {model: barrel, in_zone: warehouse}, points: 30}
+
+# Start with 6; lose one for each interruption. Points for the ones left.
+precision_tokens:
+  start: 6
+  points: [0, 10, 15, 25, 35, 50, 50]

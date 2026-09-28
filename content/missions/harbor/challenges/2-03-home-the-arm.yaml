@@ -1,0 +1,63 @@
+id: home-the-arm
+title: Find Level
+tier: 2
+summary: The forklift was left half up. Find where it is, then raise the flag.
+runs:
+  - start: {x: 200, y: 700, heading: 0}
+    attachments: {E: forklift}
+    rest: {E: 40}
+models: [flag]
+time_limit: 30
+instructions: |
+  Someone left the forklift **half raised** (about 40°) when they put it
+  on. The motor doesn't know that: when the program starts, it says its
+  angle is **0**.
+
+  Real teams fix this with **homing**: run the arm down until it stops
+  against its lowest point, then tell the motor what angle that is.
+
+  ```python
+  arm.run_until_stalled(-300)   # down until it can't go further
+  arm.reset_angle(-15)          # the lowest point is 15° below level
+  ```
+
+  After that, `arm.run_target(300, 0)` really means level. Now raise the
+  flag like before.
+goals:
+  - {type: model_state, model: flag, state: raised}
+  - {type: min_calls, name: run_until_stalled}
+hints:
+  - "Home the arm first, before you drive."
+  - "After homing, `arm.run_target(300, 0)` makes it level, so the fork can slide under the flag's handle."
+starter: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+
+  hub = PrimeHub()
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  arm = Motor(Port.E)
+
+  arm.run_target(300, 0)
+  drive_base.straight(1160)
+  arm.run_target(300, 60)
+solution: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+
+  hub = PrimeHub()
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  arm = Motor(Port.E)
+
+  arm.run_until_stalled(-300)
+  arm.reset_angle(-15)
+  arm.run_target(300, 0)
+  drive_base.straight(1160)
+  arm.run_target(300, 60)

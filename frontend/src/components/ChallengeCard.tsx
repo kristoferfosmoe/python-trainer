@@ -85,7 +85,7 @@ function previewGoals(challenge: Challenge, world: WorldSpec): GoalResult[] {
   }));
 }
 
-function describe(goal: Record<string, unknown>, zoneName: (id: unknown) => string): string {
+export function describe(goal: Record<string, unknown>, zoneName: (id: unknown) => string): string {
   switch (goal.type) {
     case "end_in_zone":
       return `Finish in ${zoneName(goal.zone)}`;

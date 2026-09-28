@@ -1,0 +1,52 @@
+id: flip-the-buoy
+title: Flip the Buoy
+tier: 2
+summary: Swing the sweeper out and knock the buoy flat.
+runs:
+  - start: {x: 200, y: 700, heading: 0}
+    attachments: {F: sweeper}
+models: [buoy]
+time_limit: 30
+instructions: |
+  This time the robot has a **sweeper** on motor **F**, on its **left**
+  side. It starts **folded forward** (90°), so it slips past things. At
+  **0°** it sticks straight out to the left, 100 mm long.
+
+  The **buoy** hangs down on your left, **800 mm** ahead of the robot's
+  center. Folded, the sweeper passes right under it.
+
+  Drive up close, **swing the sweeper out**, and push the buoy over. Once
+  it's pushed far enough, it falls flat by itself.
+goals:
+  - {type: model_state, model: buoy, state: flipped}
+hints:
+  - "The sweeper turns around a point 80 mm ahead of the robot's center. Swing it out when that point is just before the buoy: drive about 670 mm."
+  - "`sweeper.run_target(300, 0)` swings it out. Then drive forward another 200 mm."
+starter: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+
+  hub = PrimeHub()
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  sweeper = Motor(Port.F)
+
+  drive_base.straight(870)
+solution: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+
+  hub = PrimeHub()
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  sweeper = Motor(Port.F)
+
+  drive_base.straight(670)
+  sweeper.run_target(300, 0)
+  drive_base.straight(200)

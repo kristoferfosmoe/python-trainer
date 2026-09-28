@@ -1,0 +1,140 @@
+id: tournament
+title: Tournament
+tier: 7
+summary: The whole field, 2:30, wobble on. It has to score on all 3 tries.
+runs:
+  - start: {x: 200, y: 330, heading: 0}
+    choose: {E: [forklift, pusher]}
+  - start: {x: 200, y: 520, heading: 0}
+    choose: {E: [forklift, pusher]}
+  - start: {x: 200, y: 700, heading: 0}
+    choose: {E: [forklift, pusher]}
+    attachments: {F: sweeper}
+  - start: {x: 200, y: 700, heading: -90}
+    choose: {E: [forklift, pusher]}
+solution_attachments: [{E: pusher}, {E: forklift}, {E: forklift}, {E: forklift}]
+time_limit: 150
+realism: "on"
+seeds: [1, 2, 3]
+stars: [140, 170, 200]
+instructions: |
+  This is it: **every mission**, **four runs**, **2:30**, and real-world
+  wobble. Like at a real tournament, your program has to work **every
+  time**: it runs **3 times**, and a star only counts if you reach it on
+  all 3.
+
+  Run 4 starts facing **up**, for the top lane (the lighthouse, the gate and
+  the barrel).
+
+  Everything you've learned counts: the gyro, resetting motors between runs,
+  coming back to Home, and choosing attachments.
+
+  Stars: ⭐ 140 points, ⭐⭐ 170, ⭐⭐⭐ 200 (the most is 205).
+goals: []
+hints:
+  - "Start from your *Pick Your Attachments* program, and add `drive_base.use_gyro(True)`."
+  - "In the top lane the forklift would hit the lighthouse lever: lift it up out of the way first (`arm.run_target(300, 80)`)."
+  - "After the barrel, drive straight back, turn, and back up into Home, so you keep your precision tokens."
+starter: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction, Button
+  from pybricks.robotics import DriveBase
+  from pybricks.tools import wait
+
+  hub = PrimeHub()
+  hub.system.set_stop_button(Button.BLUETOOTH)
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  drive_base.use_gyro(True)
+  arm = Motor(Port.E)
+  sweeper = Motor(Port.F)
+
+
+  def crate_run():
+      drive_base.straight(800)
+      drive_base.straight(-800)
+
+
+  def second_run():
+      pass
+
+
+  def third_run():
+      pass
+
+
+  def fourth_run():
+      pass
+
+
+  for run in [crate_run, second_run, third_run, fourth_run]:
+      while Button.CENTER not in hub.buttons.pressed():
+          wait(10)
+      run()
+solution: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction, Button
+  from pybricks.robotics import DriveBase
+  from pybricks.tools import wait
+
+  hub = PrimeHub()
+  hub.system.set_stop_button(Button.BLUETOOTH)
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  drive_base.use_gyro(True)
+  arm = Motor(Port.E)
+  sweeper = Motor(Port.F)
+
+
+  def crate_and_bell():
+      # Pusher on E: it sticks out 10 mm past the front.
+      drive_base.straight(800)          # crate onto the dock
+      drive_base.straight(-800)
+      drive_base.turn(90)               # face down the table
+      drive_base.straight(180)          # to the bell's lane
+      drive_base.turn(-90)
+      drive_base.straight(990)          # ring once...
+      drive_base.straight(-100)
+      drive_base.straight(100)          # ...and twice
+      drive_base.straight(-990)
+
+
+  def sample():
+      arm.reset_angle(0)
+      drive_base.straight(560)
+      arm.run_target(300, 45)
+      drive_base.straight(-600)
+
+
+  def buoy_and_flag():
+      arm.reset_angle(0)
+      sweeper.reset_angle(90)           # the sweeper went on folded, but its motor didn't know
+      drive_base.straight(670)
+      sweeper.run_target(300, 0)
+      drive_base.straight(200)
+      sweeper.run_target(300, 90)
+      drive_base.straight(290)
+      arm.run_target(300, 60)
+      arm.run_target(300, 0)
+      drive_base.straight(-1160)
+
+
+  def lighthouse_and_barrel():
+      arm.reset_angle(0)
+      arm.run_target(300, 80)           # fold the forklift up out of the way
+      drive_base.straight(300)
+      drive_base.turn(90)
+      drive_base.straight(1850)
+      drive_base.straight(-1850)
+      drive_base.turn(-90)
+      drive_base.straight(-300)
+
+
+  for run in [crate_and_bell, sample, buoy_and_flag, lighthouse_and_barrel]:
+      while Button.CENTER not in hub.buttons.pressed():
+          wait(10)
+      run()

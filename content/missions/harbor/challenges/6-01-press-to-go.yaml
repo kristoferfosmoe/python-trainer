@@ -1,0 +1,89 @@
+id: press-to-go
+title: Press to Go
+tier: 6
+summary: Two runs in one program. Wait in Home for the button before each one.
+runs:
+  - start: {x: 200, y: 330, heading: 0}
+  - start: {x: 200, y: 150, heading: 0}
+models: [crate, bell]
+time_limit: 60
+handling_time: 5
+instructions: |
+  A real match is **one program** with several **runs**. After each run the
+  robot comes back to Home. Your teammate picks it up, puts it on the next
+  run's starting spot, and presses the **center button** to start the next
+  run.
+
+  In the simulator, a teammate does exactly that:
+
+  - It presses the center button **0.5 s** after the start (run 1).
+  - When the robot is back in Home and has stopped, it moves the robot to
+    the next spot, waits 5 seconds (swapping attachments takes time), and
+    presses the button again.
+
+  The starter code has a **mission runner** from lesson 11: a list of run
+  functions, and a wait for the button before each one. Run 1 already
+  delivers the crate. Make run 2 **ring the bell twice** and come back.
+goals:
+  - {type: mission_done, mission: M01}
+  - {type: mission_done, mission: M02, points: 20}
+hints:
+  - "Run 2 starts on the bell's lane: the bell is 990 mm ahead."
+  - "Come back to Home at the end of each run, so the teammate can start the next one."
+starter: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction, Button
+  from pybricks.robotics import DriveBase
+  from pybricks.tools import wait
+
+  hub = PrimeHub()
+  hub.system.set_stop_button(Button.BLUETOOTH)  # the center button starts each run
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+
+  def crate_run():
+      drive_base.straight(800)
+      drive_base.straight(-800)
+
+
+  def bell_run():
+      pass
+
+
+  for run in [crate_run, bell_run]:
+      while Button.CENTER not in hub.buttons.pressed():
+          wait(10)
+      run()
+solution: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction, Button
+  from pybricks.robotics import DriveBase
+  from pybricks.tools import wait
+
+  hub = PrimeHub()
+  hub.system.set_stop_button(Button.BLUETOOTH)  # the center button starts each run
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+
+  def crate_run():
+      drive_base.straight(800)
+      drive_base.straight(-800)
+
+
+  def bell_run():
+      drive_base.straight(1000)
+      drive_base.straight(-100)
+      drive_base.straight(100)
+      drive_base.straight(-1000)
+
+
+  for run in [crate_run, bell_run]:
+      while Button.CENTER not in hub.buttons.pressed():
+          wait(10)
+      run()

@@ -1,0 +1,54 @@
+id: open-the-gate
+title: Open the Gate
+tier: 4
+summary: Light the lighthouse to open the gate, then push the barrel into the warehouse.
+runs:
+  - start: {x: 200, y: 700, heading: -90}
+models: [lighthouse, harbor-gate, barrel]
+time_limit: 40
+instructions: |
+  Missions can be **linked**. The **lighthouse lever** hangs down into the
+  top lane. Push it over and the lighthouse lights up, and that **opens the
+  harbor gate**. Behind the gate is a **barrel** that belongs in the orange
+  **warehouse**.
+
+  The robot starts facing **up**. Drive **300 mm** up into the top lane,
+  turn right, and drive along the lane: the robot's body pushes the lever,
+  the gate opens, and you can push the barrel all the way.
+
+  The barrel's center has to end up in the warehouse, which starts
+  **1800 mm** to the right of the robot's center.
+goals:
+  - {type: mission_done, mission: M06}
+  - {type: mission_done, mission: M07}
+hints:
+  - "`drive_base.turn(90)` turns right."
+  - "The barrel touches the robot's front when the robot's center is 1605 mm along the lane, and its center is 35 mm further. Drive past 1800 mm."
+starter: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+
+  hub = PrimeHub()
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+  drive_base.straight(300)
+  drive_base.turn(90)
+  drive_base.straight(1000)
+solution: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+
+  hub = PrimeHub()
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+  drive_base.straight(300)
+  drive_base.turn(90)
+  drive_base.straight(1850)

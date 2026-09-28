@@ -1,0 +1,52 @@
+id: sample-to-the-lab
+title: Sample to the Lab
+tier: 3
+summary: Carry the sample to the green lab and put it down there.
+runs:
+  - start: {x: 200, y: 520, heading: 0}
+    attachments: {E: forklift}
+models: [sample]
+time_limit: 30
+instructions: |
+  This time the sample goes to the **lab**: the green circle further along
+  this lane. Its center is **1250 mm** ahead of the robot's center.
+
+  Pick the sample up like before, carry it to the lab, and **lower the arm**
+  all the way (to -15°) to put it down. The sample slides off the hook
+  where the hook is when it gets low.
+goals:
+  - {type: model_state, model: sample, state: dropped}
+  - {type: model_in_zone, model: sample, zone: lab}
+hints:
+  - "Lowered all the way, the hook is about 236 mm ahead of the robot's center."
+  - "After picking up the sample (560 mm), drive about 450 mm more, then `arm.run_target(300, -15)`."
+starter: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+
+  hub = PrimeHub()
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  arm = Motor(Port.E)
+
+  drive_base.straight(560)
+  arm.run_target(300, 45)
+solution: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+
+  hub = PrimeHub()
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  arm = Motor(Port.E)
+
+  drive_base.straight(560)
+  arm.run_target(300, 45)
+  drive_base.straight(452)
+  arm.run_target(300, -15)

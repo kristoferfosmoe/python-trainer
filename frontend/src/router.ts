@@ -1,5 +1,5 @@
 // Tiny hash router: #/, #/lesson/<id>/<page>, #/playground/<challenge>,
-// #/teams, #/teams/<id>, #/teams/<id>/<username>.
+// #/missions, #/missions/<challenge>, #/teams, #/teams/<id>, #/teams/<id>/<username>.
 // Hash URLs need no server configuration.
 
 import { useEffect, useState } from "react";
@@ -11,6 +11,8 @@ export type Route =
   | { page: "account" }
   | { page: "lesson"; lessonId: string; pageNumber?: number }
   | { page: "playground"; challengeId?: string }
+  | { page: "missions" }
+  | { page: "mission"; challengeId: string }
   | { page: "teams" }
   | { page: "team"; teamId: number }
   | { page: "member"; teamId: number; username: string };
@@ -31,6 +33,7 @@ export function parseRoute(hash: string): Route {
     return { page: "lesson", lessonId: parts[1], pageNumber: Number.isInteger(pageNumber) && pageNumber > 0 ? pageNumber : undefined };
   }
   if (parts[0] === "playground") return { page: "playground", challengeId: parts[1] };
+  if (parts[0] === "missions") return parts[1] ? { page: "mission", challengeId: parts[1] } : { page: "missions" };
   if (parts[0] === "teams") {
     const teamId = Number(parts[1]);
     if (!Number.isInteger(teamId) || teamId <= 0) return { page: "teams" };
@@ -52,6 +55,10 @@ export function href(route: Route): string {
       return `#/lesson/${encodeURIComponent(route.lessonId)}${route.pageNumber ? `/${route.pageNumber}` : ""}`;
     case "playground":
       return `#/playground${route.challengeId ? `/${encodeURIComponent(route.challengeId)}` : ""}`;
+    case "missions":
+      return "#/missions";
+    case "mission":
+      return `#/missions/${encodeURIComponent(route.challengeId)}`;
     case "teams":
       return "#/teams";
     case "team":

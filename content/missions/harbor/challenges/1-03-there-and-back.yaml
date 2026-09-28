@@ -1,0 +1,45 @@
+id: there-and-back
+title: There and Back
+tier: 1
+summary: Deliver the crate, then drive back to Home.
+runs:
+  - start: {x: 200, y: 330, heading: 0}
+models: [crate]
+time_limit: 30
+instructions: |
+  In a real match, the robot has to **come back to Home** after each trip.
+  A robot that stops out on the field gets picked up, and the team loses a
+  **precision token** (worth points at the end).
+
+  Push the crate onto the dock again, then drive **backward** all the way
+  into Home.
+goals:
+  - {type: mission_done, mission: M01}
+  - {type: end_in_zone, zone: home}
+hints:
+  - "A negative distance drives backward: `drive_base.straight(-800)`."
+starter: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+
+  hub = PrimeHub()
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+  drive_base.straight(800)
+solution: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+
+  hub = PrimeHub()
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+  drive_base.straight(800)
+  drive_base.straight(-800)

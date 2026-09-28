@@ -1,7 +1,7 @@
 // Talks to the simulator Web Worker. If a program runs too long (a loop that
 // never ends and never waits), the worker is stopped and a fresh one started.
 
-import type { RunRequest, Trace } from "../types";
+import type { MissionRunRequest, RunRequest, Trace } from "../types";
 import type { WorkerRequest, WorkerResponse } from "./worker";
 
 export type RunnerStatus = "loading" | "ready" | "running" | "broken";
@@ -12,6 +12,8 @@ export class RunTimeout extends Error {}
 export class RunRestarted extends Error {}
 
 const WALL_CLOCK_LIMIT_MS = 20_000;
+// A mission can run a 2:30 match up to 3 times ("works every time").
+const MISSION_WALL_CLOCK_LIMIT_MS = 60_000;
 
 /** The parts of a Worker the runner uses (tests pass a fake one). */
 export type SimWorker = Pick<Worker, "postMessage" | "terminate" | "onmessage" | "onerror">;
@@ -106,15 +108,24 @@ export class SimRunner {
   }
 
   run(request: RunRequest): Promise<Trace> {
+    return this.send("run", JSON.stringify(request), WALL_CLOCK_LIMIT_MS);
+  }
+
+  /** Run a Mission Mode match (trainer_sim.missions.run_mission). */
+  runMission(request: MissionRunRequest): Promise<Trace> {
+    return this.send("mission", JSON.stringify(request), MISSION_WALL_CLOCK_LIMIT_MS);
+  }
+
+  private send(type: WorkerRequest["type"], payload: string, limitMs: number): Promise<Trace> {
     const id = this.nextId++;
-    const message: WorkerRequest = { type: "run", id, payload: JSON.stringify(request) };
+    const message: WorkerRequest = { type, id, payload };
     if (this.status === "ready") this.setStatus("running");
     return new Promise<Trace>((resolve, reject) => {
       const entry: PendingRun = { resolve, reject };
       this.pending.set(id, entry);
       // Loading Python doesn't count against the program's time.
       const startTimer = () => {
-        if (this.pending.get(id) === entry) entry.timer = setTimeout(() => this.restart(id), WALL_CLOCK_LIMIT_MS);
+        if (this.pending.get(id) === entry) entry.timer = setTimeout(() => this.restart(id), limitMs);
       };
       if (this.status === "loading") {
         const unsubscribe = this.onStatus((status) => {
