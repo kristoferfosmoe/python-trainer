@@ -31,13 +31,17 @@ def check_lesson(lesson, library=None, run=True):
     in development, it runs in a limited process on this computer.
     """
     library = library or DatabaseLibrary()
-    request = {
+    return run_checker({
         "lesson": lesson,
         "robot": library.robot,
         "worlds": library.worlds,
         "playground": library.playground_by_id,
         "run": run,
-    }
+    })
+
+
+def run_checker(request):
+    """Send a check (see trainer_content.check) to the checker, and return its problems."""
     if settings.LESSON_CHECKER_SOCKET:
         return _ask_checker(request)
     if settings.PRODUCTION:

@@ -12,13 +12,15 @@ from ninja.security import django_auth
 from pydantic import Field
 
 from curriculum.models import Lesson
+from missions.progress import import_guest_progress as import_guest_missions
+from missions.progress import progress_for
 
 from .models import Attempt, CodeDraft, LessonProgress
 
 router = Router(tags=["progress"], auth=django_auth)
 
 MAX_CODE = 50_000
-KEY_RE = re.compile(r"^(lesson/[\w-]{1,80}/[\w-]{1,80}|playground/[\w-]{1,80})$")
+KEY_RE = re.compile(r"^(lesson/[\w-]{1,80}/[\w-]{1,80}|playground/[\w-]{1,80}|mission/[\w-]{1,80})$")
 PLAYGROUND = "playground/"
 
 
@@ -45,7 +47,7 @@ def state_for(user):
         .values_list("key", flat=True)
     })
     drafts = dict(CodeDraft.objects.filter(user=user).values_list("key", "code"))
-    return {"lessons": lessons, "solved": solved, "drafts": drafts}
+    return {"lessons": lessons, "solved": solved, "drafts": drafts, "missions": progress_for(user)}
 
 
 # Far beyond any real lesson; bigger numbers would also overflow the database.
@@ -131,10 +133,16 @@ def record_attempt(request, data: AttemptIn):
     return {"ok": True}
 
 
+class MissionIn(Schema):
+    stars: int = Field(0, ge=0, le=3)
+    best_score: int = Field(0, ge=-100_000, le=100_000)
+
+
 class ImportIn(Schema):
     lessons: dict[str, ProgressIn] = {}
     solved: list[str] = []
     drafts: dict[str, str] = {}
+    missions: dict[str, MissionIn] = {}
 
 
 @router.post("/me/import")
@@ -153,4 +161,5 @@ def import_guest_progress(request, data: ImportIn):
             if KEY_RE.match(key) and key not in existing:
                 # Solved as a guest: remember it (the code wasn't kept).
                 Attempt.objects.create(user=user, key=key, code="", passed=True, sim_version="guest")
+        import_guest_missions(user, data.missions)
     return state_for(user)

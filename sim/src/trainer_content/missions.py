@@ -47,6 +47,7 @@ def load_game(game_dir, robots_dir):
         raise ContentError(f"{game_dir.name}: no robot file {robot_path.name}")
     game["robot"] = _load(robot_path)
     game["attachments"] = [_load(p) for p in sorted((game_dir / "attachments").glob("*.yaml"))]
+    game["source"] = str(game_dir)
     game["challenges"] = []
     for path in sorted((game_dir / "challenges").glob("*.yaml")):
         challenge = _load(path)
@@ -65,8 +66,8 @@ def load_games(root):
 
 
 def game_spec(game):
-    """The game as the simulator and the browser need it (without the challenges)."""
-    return {key: value for key, value in game.items() if key != "challenges"}
+    """The game as the simulator and the browser need it (without its challenges)."""
+    return {key: value for key, value in game.items() if key not in ("challenges", "source")}
 
 
 class MissionChecker:

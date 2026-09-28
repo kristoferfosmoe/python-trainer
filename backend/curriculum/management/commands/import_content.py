@@ -1,6 +1,6 @@
-"""Load (or update) worlds, the robot, playground challenges and courses from
-the YAML files in content/. Lessons are checked first, and nothing is
-imported if any lesson has a problem.
+"""Load (or update) worlds, the robot, playground challenges, courses and
+Mission Mode games from the YAML files in content/. Everything is checked
+first, and nothing is imported if anything has a problem.
 
     python manage.py import_content [--path ../content] [--no-check]
 """
@@ -12,6 +12,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from curriculum.models import Course, Lesson, PlaygroundChallenge, Robot, Unit, World
+from missions.models import MissionChallenge, MissionGame
 
 
 def _relative(path, root):
@@ -22,7 +23,7 @@ def _relative(path, root):
 
 
 class Command(BaseCommand):
-    help = "Import lessons, worlds and challenges from the content/ folder."
+    help = "Import lessons, worlds, challenges and Mission Mode games from the content/ folder."
 
     def add_arguments(self, parser):
         parser.add_argument("--path", default=str(settings.CONTENT_DIR))
@@ -30,9 +31,11 @@ class Command(BaseCommand):
 
     def handle(self, *args, path, no_check, **options):
         from trainer_content import Checker, ContentError, Library
+        from trainer_content.missions import MissionChecker, game_spec, load_games
 
         try:
             library = Library(path)
+            games = load_games(path)
         except (ContentError, OSError) as error:
             raise CommandError(f"Couldn't read {path}: {error}")
 
@@ -48,10 +51,13 @@ class Command(BaseCommand):
                     "id": f"playground/{challenge['id']}", "title": challenge["title"], "summary": "playground",
                     "blocks": [{**challenge, "type": "challenge"}],
                 })
+            mission_checker = MissionChecker()
+            for game in games:
+                problems += mission_checker.check_game(game)
             if problems:
                 raise CommandError("Nothing was imported. Problems:\n" + "\n".join(f"  - {p}" for p in problems))
 
-        counts = {"worlds": 0, "challenges": 0, "courses": 0, "lessons": 0}
+        counts = {"worlds": 0, "challenges": 0, "courses": 0, "lessons": 0, "games": 0, "missions": 0}
         with transaction.atomic():
             for slug, spec in library.worlds.items():
                 World.objects.update_or_create(slug=slug, defaults={"name": spec.get("name", slug), "spec": spec})
@@ -90,7 +96,22 @@ class Command(BaseCommand):
                         lesson.source = _relative(raw.get("source", ""), library.root)
                         lesson.save()
                         counts["lessons"] += 1
+            for game_order, game in enumerate(games):
+                spec = game_spec(game)
+                record, _ = MissionGame.objects.update_or_create(slug=game["id"], defaults={
+                    "title": game["title"], "summary": game.get("summary", ""), "order": game_order, "spec": spec,
+                    "source": _relative(game["source"], library.root),
+                })
+                counts["games"] += 1
+                for order, challenge in enumerate(game["challenges"]):
+                    source = _relative(challenge.pop("source", ""), library.root)
+                    MissionChallenge.objects.update_or_create(slug=challenge["id"], defaults={
+                        "game": record, "title": challenge["title"], "tier": challenge["tier"], "order": order,
+                        "spec": challenge, "source": source,
+                    })
+                    counts["missions"] += 1
         self.stdout.write(self.style.SUCCESS(
-            "Imported {worlds} worlds, {challenges} playground challenges, {courses} course(s) and {lessons} lessons."
+            "Imported {worlds} worlds, {challenges} playground challenges, {courses} course(s), {lessons} lessons, "
+            "{games} mission game(s) and {missions} mission challenges."
             .format(**counts)
         ))
