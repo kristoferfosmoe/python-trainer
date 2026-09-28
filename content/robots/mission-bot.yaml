@@ -1,0 +1,41 @@
+# The robot for Mission Mode. It's the Trainer Bot (same wheels, sensors and
+# ports, so everything from the lessons carries over), with nothing bolted
+# onto the arm motors: each challenge puts attachments on ports E and F.
+# Measurements are in millimeters. Positions are [forward, left] from the
+# point halfway between the wheels.
+id: mission-bot
+name: Mission Bot
+wheel_diameter: 56
+axle_track: 112
+body:
+  front: 110
+  back: 60
+  width: 150
+  height: 90
+ports:
+  A:
+    device: motor
+    role: left_wheel
+    label: Left wheel
+    # Mounted mirror-image, so Pybricks needs Direction.COUNTERCLOCKWISE.
+    mirrored: true
+  B:
+    device: motor
+    role: right_wheel
+    label: Right wheel
+  C:
+    device: color_sensor
+    label: Color sensor (looks down)
+    position: [75, 0]
+  D:
+    device: ultrasonic_sensor
+    label: Distance sensor (looks forward)
+    position: [105, 0]
+  E:
+    device: motor
+    role: arm
+    label: Attachment motor E
+  F:
+    device: motor
+    role: arm
+    label: Attachment motor F

@@ -90,6 +90,9 @@ class Simulation:
         self._sensor_cache = {}
         self.recorder = Recorder(self)
         self.recorder.frame()
+        # Mission Mode's field and teammate (missions/match.py). None for
+        # lessons and the playground, which never run any of its code.
+        self.mission = None
 
     # --- Clock -------------------------------------------------------------------
 
@@ -148,13 +151,20 @@ class Simulation:
             drivebase.update(dt)
         for motor in self.motors.values():
             motor.step(dt)
-        self._move_robot()
+        if self.mission is None:
+            self._move_robot()
+        else:
+            old_pose = (self.x, self.y, self.heading)
+            self._move_robot()
+            self.mission.step(old_pose, dt)
         for motor in self.motors.values():
             motor.end_tick(dt)
         self.phys_t += DT_MS
         self.ticks += 1
         if self.ticks % RECORD_EVERY == 0:
             self.recorder.frame()
+        if self.mission is not None:
+            self.mission.after_tick()
         if self.program_running and self.button_presses and self.stop_buttons:
             if self.stop_buttons <= self.buttons_at(self.phys_t):
                 self.now = max(self.now, self.phys_t)

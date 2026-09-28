@@ -154,6 +154,16 @@ def run_program(code, world, robot, options=None, goals=None):
     options = options or {}
     started = time.perf_counter()
     sim = Simulation(world, robot, options)
+    return run_simulation(
+        sim, code, options, lambda recording, end: check_goals(goals, sim.world, recording, end, code, sim), started,
+    )
+
+
+def run_simulation(sim, code, options, check, started, program_ended=None):
+    """Run `code` in a ready-made simulation (Mission Mode sets one up with a
+    field and attachments). `check(recording, end)` gives the goal results.
+    `program_ended()`, if given, is called when the program stops, before
+    the robot settles."""
     warnings = lint(code)
     try:
         compiled = compile_student_code(code)
@@ -161,6 +171,8 @@ def run_program(code, world, robot, options=None, goals=None):
         end = {"reason": "error", "error": explain(exc, code)}
     else:
         end = _execute(sim, compiled, code, options.get("seed", 1))
+    if program_ended is not None:
+        program_ended()
     sim.finish()
     end["t"] = round(sim.now, 1)
     if end["reason"] == "error":
@@ -176,7 +188,7 @@ def run_program(code, world, robot, options=None, goals=None):
         "end": end,
         "warnings": warnings,
         "structure": code_structure(code),
-        "goals": check_goals(goals, sim.world, recording, end, code, sim),
+        "goals": check(recording, end),
     }
     result.update(recording)
     result["stats"] = {
