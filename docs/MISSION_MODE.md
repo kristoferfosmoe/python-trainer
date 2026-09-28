@@ -7,7 +7,7 @@ Students climb a ladder of challenges that start with "push one block" and
 end with a full match of several runs.
 
 This is a design, not a finished feature. Nothing described here exists yet.
-§12 lists the decisions still open.
+§12 records the decisions made so far.
 
 **Hard rule: lessons and the playground don't change.** Everything below is
 new content, new code paths, or optional additions that only turn on when a
@@ -38,9 +38,9 @@ FLL season missions (their names and artwork belong to FIRST and LEGO, see
 | **Mission model** (or **model**) | A thing on the field that can be moved or changed: a lever, a block, a loop on a post, a gate. It has a **state**. |
 | **Mission** | Something that scores points, like "Lever flipped: 20 points". Checked against model states. |
 | **Attachment** | A shape bolted onto an arm motor (port E or F): a lift arm, a sweeper, a hook, a pusher. |
-| **Run** | One program, started with the robot in Home. |
-| **Match** | 150 seconds of runs. The field isn't reset between runs. |
-| **Challenge** | One step on the ladder: which models are on the field, how many runs, what counts as passing, and the stars. |
+| **Match** | 150 seconds with **one program**. The field isn't reset during a match. |
+| **Run** | One trip out from Home and back. In a match with several runs, the program waits in Home for a button press before each one, like lesson 11's mission runner. |
+| **Challenge** | One step on the ladder: which models are on the field, how many runs, which attachment each run uses, what counts as passing, and the stars. |
 
 ## 3. What the student sees
 
@@ -49,20 +49,24 @@ FLL season missions (their names and artwork belong to FIRST and LEGO, see
 ```
 
 - **`#/missions`: the ladder.** Tiers down the page, challenges left to right,
-  1–3 ⭐ on each. A tier unlocks when the student has at least one star on
-  every challenge of the tier before it. (Coaches and staff see everything
-  unlocked.)
+  1–3 ⭐ on each. **Challenges unlock one at a time:** a challenge opens once
+  the one before it is completed (at least one star). The first challenge of
+  a tier opens when the last one of the tier before is completed. Locked
+  challenges show a 🔒 and their title, but can't be opened. Only staff (site
+  admins) can open locked challenges, so they can test them.
 - **`#/missions/<challenge>`: the workspace.** It reuses the playground's
   pieces (editor, mat, playback bar, console and variables panels) and adds:
-  - **Run tabs** (`Run 1`, `Run 2`, …) when the challenge has more than one
-    run. Each run is its own program.
-  - **An attachment picker** per run: a small card for each attachment the
-    challenge allows, with a picture and the port it goes on.
+  - **One editor, one program** for the whole match.
+  - **An attachment plan**: a row of cards, one per run, each showing the
+    attachment for that run, with a picture and the port it goes on. From
+    tier 6 on, the student picks each run's attachment from the ones the
+    challenge offers.
   - **A score panel**: every mission with its points, ticked off as it scores
-    during playback; the running total; precision tokens; the match clock.
-  - **Stars** after the run: bronze, silver and gold score targets.
-- **Run on your robot** still works for each run's program. Attachments are
-  up to the team to build.
+    during playback; the running total; precision tokens; the match clock;
+    which run is going.
+  - **Stars** after the match: bronze, silver and gold score targets.
+- **Run on your robot** works as it does for playground challenges, since
+  it's one program. Attachments are up to the team to build.
 
 ## 4. Simulating attachments
 
@@ -127,7 +131,7 @@ hook: {at: 100, z_size: 15}    # a hook near the tip
 A new robot file, `content/robots/mission-bot.yaml`. It's the Trainer Bot
 (same wheels, sensors and ports, so everything students learned carries
 over) with no attachments bolted on. The challenge, or the student's pick in
-the attachment picker, adds them for each run.
+the attachment plan, adds them for each run.
 
 `trainer-bot.yaml` is not changed.
 
@@ -290,53 +294,99 @@ every time the total changes during the run, so the score panel can tick
 missions off as the replay reaches them. The final score is the one that
 counts.
 
-### 6.2 Home, runs and interruptions
+### 6.2 One program, several runs
 
-Real FLL rules, simplified:
+A match is **one program**, the way many real teams run a match: a list of
+missions, and a button press in Home to start each one. Lesson 11 (Press to
+Start) already teaches this, so students have seen it:
 
-- **Home** is a zone in the field file. Every run starts with the whole robot
-  inside it, at a start pose the run chooses (from a small list of marked
-  spots, or anywhere in Home in later tiers).
-- A **run ends** when its program finishes (or errors) **and** the robot has
-  stopped moving.
-- If the robot ends a run **inside Home**, the next run starts right away (after a
-  short handling time for swapping attachments, default 5 s of match time).
-- If it ends **outside Home**, that's an **interruption**: the robot is
-  picked up and put back in Home, the team loses a **precision token**
-  (6 to start, each worth points at the end, per the game's rules), and
-  anything it was carrying is removed from the field.
-- The match ends at 150 s. A run still going then is stopped (like the time
-  limit today).
+```python
+hub.system.set_stop_button(Button.BLUETOOTH)   # so the center button can start runs
 
-### 6.3 How a match runs in the simulator
+def run_1():
+    ...drive out, flip the lever, come home...
 
-One `Simulation` for the whole match, so the field keeps its state between
-runs. For each run:
+def run_2():
+    ...
 
-1. Put the robot at the run's start pose; reset motor angles, gyro and
-   drive bases (as a fresh program on a real hub would).
-2. Swap in the run's attachments.
-3. Run the run's program with fresh Python globals, through the same
-   `runner` (tracing, line cost, limits, kid-friendly errors).
-4. Let the robot settle (as `finish()` does today), then apply the Home /
-   interruption rules.
+for run in [run_1, run_2]:
+    while Button.CENTER not in hub.buttons.pressed():
+        wait(10)                               # wait in Home for the teammate
+    run()
+```
 
-The trace is one recording for the whole match, with a `runs` list saying
-where each run starts and ends (§8), so playback, the scrubber and the score
-panel work across runs. A program error in Run 2 stops Run 2 only; later runs
-still happen, the way a real team would press on.
+Tiers 1–5 have a single run, so the program just starts and there's no
+waiting. From tier 6 on, a challenge has several runs.
 
-**Alternative (see §12):** one program with a hub menu choosing the run, and
-scripted button presses in between, like lesson 11's mission runner. This is
-closer to how many teams really do it, but it's harder for younger students.
-We start with one program per run and can add the menu style as a later
-tier.
+### 6.3 The teammate
+
+In a real match, a teammate handles the robot in Home. The simulator plays
+that teammate, and does the same thing every time:
+
+- **Before the first run,** the robot is placed at the challenge's start pose
+  (inside Home) with run 1's attachment, and the program starts. The
+  teammate presses the start button once at 0.5 s, for programs that wait
+  for it.
+- **When the robot comes home:** once the robot has been **stopped inside
+  Home** for 0.5 s, the teammate:
+  1. picks it up and puts it at the next run's start pose (each run can have
+     its own spot in Home),
+  2. swaps the attachment for the next run's (this takes the challenge's
+     handling time, default 5 s of match time),
+  3. presses the start button (`CENTER` by default; a challenge can pick
+     another).
+- **When the robot gets stuck outside Home:** if the robot has been stopped
+  **outside** Home for 3 s while the program is still running, that's an
+  **interruption**. The teammate picks it up, which costs a **precision
+  token** (6 to start, each worth points at the end, per the game's rules),
+  and anything it was carrying is taken off the field. Then they do the
+  same as above: next start pose, next attachment, press the button.
+- **When the runs are used up,** the teammate stops pressing the button. If
+  the program still waits for it, nothing more happens until 150 s.
+- **The match ends** when the program ends (and the robot has stopped
+  moving) or at 150 s, whichever comes first. A robot still out on the
+  field when the program ends counts as one more interruption, as it would
+  at a real table.
+
+The teammate only ever does what a real teammate can: move the robot while
+it's in Home, swap attachments, and press buttons. So real-robot mistakes
+happen in the simulator too:
+
+- **The gyro keeps counting.** Picking the robot up and putting it down
+  doesn't reset `hub.imu.heading()`. A program that doesn't call
+  `reset_heading(0)` at the start of each run turns the wrong way on run 2.
+- **Encoders keep counting.** A new attachment is put on at its resting
+  angle, but the motor's `angle()` carries on from where it was. Programs
+  should call `reset_angle()`, or home the arm with `run_until_stalled`, at
+  the start of each run.
+- **The stop button.** Without `set_stop_button(...)`, the teammate's first
+  press of the center button stops the program, with the same friendly
+  error as in lesson 11.
+
+### 6.4 How a match runs in the simulator
+
+A match is a normal run of the student's program, with three additions:
+
+1. The robot starts with run 1's attachments, and the field's models are
+   set up.
+2. The teammate (§6.3) is checked every physics tick. It uses the button
+   presses the simulator already has (the scripted `buttons:` presses that
+   lesson 11 uses), except that its presses are decided during the run
+   instead of written down in advance.
+3. When the program ends, the robot settles (as `finish()` does today), then
+   the end-of-match Home check and the scoring run.
+
+There's one recording for the whole match, with a `runs` list saying when
+each run starts and ends and how (§8), so playback, the scrubber and the
+score panel follow along. An error in the program ends the match, as it
+would on a real hub; the score is whatever the field shows at that point.
 
 ## 7. The ladder
 
 Each challenge sets which models are on the field (the rest are hidden),
-where the robot starts, the runs, the allowed attachments, and what passing
-and the stars mean. Challenges within a tier can be done in any order.
+where the robot starts, the runs and their attachments, and what passing
+and the stars mean. **Challenges are done in order:** each one unlocks when
+the one before it is completed (§3).
 
 | Tier | Theme | Example challenges | New skill |
 |---|---|---|---|
@@ -345,7 +395,7 @@ and the stars mean. Challenges within a tier can be done in any order.
 | 3. 🪝 Carry and Deliver | Pick up and bring back. | Take the sample home · Collect cargo in the tray · Drop the loop on the target | Hook heights, order of moves, returning Home |
 | 4. 🔗 Combos | Two or three missions in one run; linked models. | Lever opens gate, then drive through · Two deliveries in one trip | Planning a route, functions for each mission |
 | 5. 🧭 Navigation | Missions far from Home; realism on. | Follow the line to the crane · Square up on the wall, then turn · Gyro-straight across the field | Line following, wall alignment, gyro; mistakes pile up over distance |
-| 6. 🏁 Matches | Several runs, attachment swaps, precision tokens, 150 s. | Two-run match · Pick your attachments · Beat 120 points | Run strategy, time, choosing attachments |
+| 6. 🏁 Matches | Several runs in one program, attachment swaps, precision tokens, 150 s. | Press to go (two runs) · Reset before each run (gyro and arm) · Pick your attachments · Beat 120 points | Mission runner with button presses, resetting between runs, run strategy, choosing attachments |
 | 7. 🏆 Tournament | Full field, all missions, **must work every time**. | Score 200 on 3 different seeds · Gold: 250 on all 5 | Reliability: code that copes with small errors |
 
 **Stars.** Each challenge has a pass rule and three score targets:
@@ -354,8 +404,10 @@ and the stars mean. Challenges within a tier can be done in any order.
 stars: [60, 90, 120]        # bronze, silver, gold
 ```
 
-The first star is the pass. Tier 1–4 challenges can use goals instead of
-scores (see below).
+The first star is the pass, and it's what unlocks the next challenge. Silver
+and gold are for students who want to come back and do better. Tier 1–4
+challenges can use goals instead of scores (see below); passing the goals
+then gives all three stars.
 
 **"Works every time" (tier 7).** A challenge can set `seeds: [1, 2, 3]`: the
 same code runs once per seed with realism on (so slip and wheel mismatch
@@ -391,12 +443,13 @@ playground get exactly the trace they get today.
     "initial": {"bridge-lever": {"angle": 0, "state": "up"}, "cargo": {"x": 900, "y": 500}, ...},
     "changes": [[frame, "cargo", {"x": 912.4, "y": 500}], ...]    // only when something changes
   },
-  "runs":  [{"run": 1, "start": 0, "end": 41200, "ended": "home"},
-            {"run": 2, "start": 46200, "end": 98800, "ended": "interrupted"}],
+  "runs":  [{"run": 1, "start": 500, "end": 41200, "ended": "home", "attachments": {"E": "forklift"}},
+            {"run": 2, "start": 46200, "end": 98800, "ended": "interrupted", "attachments": {"E": "hook"}}],
   "score": {"total": 85, "missions": [{"id": "M01", "points": 20}, ...],
             "tokens": 5, "timeline": [[t, total], ...]},
   // new event types: "blocked" (an arm hit something), "caught", "dropped",
-  // "state" (a model changed state), "interruption", "run_start", "run_end"
+  // "state" (a model changed state), "interruption", "run_start", "run_end",
+  // "teammate" (picked up, swapped attachment, pressed a button)
 }
 ```
 
@@ -434,13 +487,15 @@ tier: 2
 game: harbor
 models: [bridge-lever, bridge-gate]    # the rest of the field's models are hidden
 time_limit: 30
-runs:
+runs:                                   # one entry per run; tiers 1-5 have just one
   - start: {x: 200, y: 200, heading: 0}
-    attachments: [sweeper]              # fixed for this challenge; or `choose: [sweeper, forklift]`
-    starter: |
-      ...
-    solution: |
-      ...
+    attachments: {E: sweeper}           # fixed; or `choose: {E: [sweeper, forklift]}` (tier 6+)
+start_button: CENTER                    # what the teammate presses (default CENTER)
+handling_time: 5                        # seconds to swap attachments between runs
+starter: |                              # one program for the whole match
+  ...
+solution: |
+  ...
 goals:
   - {type: model_state, model: bridge-lever, state: down}
   - {type: no_collisions}
@@ -458,15 +513,18 @@ New code goes in `sim/src/trainer_sim/missions/`:
 | `models.py` | The model types (§5.1) and links |
 | `contacts.py` | The contact step (§4.4) |
 | `scoring.py` | Missions, precision tokens, stars, the new goals |
-| `match.py` | Runs a match: several programs in one `Simulation` (§6.3) |
+| `match.py` | Runs a match: the teammate, runs and Home checks (§6.2–6.4) |
 
 Changes to existing files are small hooks:
 
 - `sim.py`: `_tick()` calls `self.contacts.step()` if `self.contacts` is set
   (it's `None` for lessons and the playground). The recorder adds the new
   trace keys only when there's something to put in them.
-- `runner.py`: a `run_match(...)` next to `run_program(...)`. `run_program`
+- `runner.py`: a `run_match(...)` next to `run_program(...)`. It runs the
+  program the same way, with the match set up around it. `run_program`
   itself doesn't change.
+- `sim.py`'s `buttons_at()` also asks the teammate, when there is one. With
+  no teammate (lessons and the playground) it works exactly as today.
 - `robot.py`: reads an optional `attachments` list. Robots without it are
   built exactly as today.
 
@@ -493,8 +551,15 @@ current models:
 | `MissionChallenge` | game, slug, tier, order, published, spec (JSON, as in the YAML) |
 | `MissionProgress` | user, challenge, best_score, stars, updated_at (only moves up, like lesson progress) |
 
+A challenge counts as **completed** when `stars >= 1`. The server works out
+which challenges are unlocked from `MissionProgress` and the ladder's order,
+and refuses to send a locked challenge (except to staff), so skipping ahead
+by typing an address doesn't work. Pass/fail is still decided in the browser
+(see §8 of the architecture doc), so a determined student could fake a
+pass. That's fine for a learning tool.
+
 Saved code and runs reuse the existing `CodeDraft` and `Attempt` tables
-with a new key prefix, `mission/<challenge>/<run>`. That needs one change
+with a new key prefix, `mission/<challenge>`. That needs one change
 outside the new app: allowing the `mission/` prefix in
 `progress/api.py`'s key check (a one-line change that lessons and the
 playground don't see).
@@ -502,36 +567,38 @@ playground don't see).
 API:
 
 ```
-GET  /api/missions                       games, tiers and challenges; your stars
-GET  /api/missions/{slug}                one challenge, with its game's field and attachments
-PUT  /api/missions/{slug}/progress       {score, stars}   (kept only if higher)
-PUT  /api/drafts                         key mission/<challenge>/<run>   (existing endpoint)
-POST /api/attempts                       key mission/<challenge>         (existing endpoint)
+GET  /api/missions                       games, tiers and challenges; your stars; which are unlocked
+GET  /api/missions/{slug}                one challenge, with its game's field and attachments (403 if locked)
+PUT  /api/missions/{slug}/progress       {score, stars}   (kept only if higher; 403 if locked)
+PUT  /api/drafts                         key mission/<challenge>   (existing endpoint)
+POST /api/attempts                       key mission/<challenge>   (existing endpoint)
 ```
 
-Solutions are only sent to coaches, mentors and staff, as today. `import_content`
-also loads `content/missions/`. The admin gets YAML editors for games and
-challenges, with the full check on save.
+Solutions are never sent to students. `import_content` also loads
+`content/missions/`. The admin gets YAML editors for games and challenges,
+with the full check on save, for staff who write the game.
 
-The coach's student page gets a **Missions** section (stars per challenge,
-best score, the code of each run) after the lesson list. The team progress
-grid is not changed in v1.
+**No coach features in v1.** Coaches don't add games or challenges, can't
+unlock challenges for a student, and the team pages don't show Missions.
+There are no leaderboards.
 
 ### 9.5 Frontend
 
 - `router.ts`: new routes `#/missions` and `#/missions/<challenge>`.
 - `App.tsx`: a **🏆 Missions** link in the main nav. The Lessons and
   Playground links and pages stay as they are.
-- New: `pages/MissionsPage.tsx` (the ladder), `components/MissionWorkspace.tsx`
-  (run tabs, attachment picker, score panel; built from the same editor,
-  mat and playback pieces as `ChallengeWorkspace`), `components/ScorePanel.tsx`.
+- New: `pages/MissionsPage.tsx` (the ladder, with locks),
+  `components/MissionWorkspace.tsx` (attachment plan and score panel, built
+  from the same editor, mat and playback pieces as `ChallengeWorkspace`),
+  `components/ScorePanel.tsx`.
 - `render/drawMat.ts`: new optional drawing for models and attachments,
   used only when the trace has them. Lift arms are drawn shorter as they
   rise (their length on the mat) and lighter the higher they are, so height
   is visible from above. Carried pieces are drawn on the hook or tray.
 - The worker gets a `runMatch` message next to `run`.
 - Guests keep mission stars in `localStorage`, like playground challenges,
-  and they're merged into the account on sign-in.
+  and they're merged into the account on sign-in. Guests' locks are worked
+  out in the browser from those stars.
 
 ## 10. Keeping lessons and the playground unchanged
 
@@ -558,27 +625,18 @@ Each step is a separate PR that ships something testable.
 4. **Carrying.** `loop`, `piece`, hooks and trays; tier 3 challenges.
 5. **Links and the full field.** `gate`, `dispenser`, `button`, `flag`,
    links; tiers 4–5.
-6. **Matches.** Several runs, Home and interruptions, precision tokens,
-   attachment picker; tier 6.
-7. **Tournament.** Seeds, "works every time" stars; tier 7. Coach page
-   Missions section.
-8. **Later:** arm load, hub-menu runs, a visual field editor.
+6. **Matches.** The teammate, several runs in one program, Home and
+   interruptions, precision tokens, attachment choice; tier 6.
+7. **Tournament.** Seeds, "works every time" stars; tier 7.
+8. **Later:** arm load, a visual field editor.
 
-## 12. Open questions
+## 12. Decisions
 
-1. **Runs as separate programs or one program with a menu?** This design
-   starts with separate programs per run (simpler, one clear file per run)
-   and leaves a hub-menu version for later. Real teams do both.
-2. **One game or several?** One invented game ("Harbor") is enough to fill
-   seven tiers. The format allows more games, such as a coach-made one for
-   their team (like team-owned courses).
-3. **Should tiers be locked?** This design locks a tier until the one before
-   it has a star on every challenge. It could also be "suggested order,
-   nothing locked".
-4. **Team scores?** A team leaderboard per challenge would be motivating,
-   but pass/fail and scores are computed in the browser and can be faked
-   (see §8 of the architecture doc). Fine for fun, not for anything that
-   matters.
-5. **How close to real FLL rules?** Precision tokens, handling time and
-   interruptions are simplified here. We could follow a real season's rules
-   more closely, but not copy its missions or artwork.
+| Question | Decision |
+|---|---|
+| Runs as separate programs, or one program? | **One program** for the whole match, with a button press in Home to start each run (§6.2). The simulator plays the teammate (§6.3). |
+| Locked or open ladder? | **Locked.** Each challenge unlocks when the one before it is completed (at least one star). Only staff can open locked challenges. |
+| Coach input (coach-made games, unlocking, team pages)? | **Not in v1.** Staff write the game in the admin or in `content/missions/`. |
+| Team leaderboards? | **No.** |
+| One game or several? | One invented game ("Harbor") to start. The format allows more later. |
+| How close to real FLL rules? | Simplified: precision tokens, handling time and interruptions as in §6.3. No copied missions or artwork. |
