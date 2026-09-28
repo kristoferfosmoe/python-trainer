@@ -47,11 +47,96 @@ blocks:
 
   - type: text
     markdown: |
+      Four quarter turns make one full spin: 90 + 90 + 90 + 90 = 360. Watch
+      the robot end up facing the same way it started.
+
+  - type: challenge
+    id: quarter-spins
+    title: Quarter Spins
+    summary: Spin all the way around, one quarter at a time.
+    world: practice-field
+    start: {x: 1100, y: 650, heading: 0}
+    starter: |
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      drive_base.turn(90)     # a quarter
+      drive_base.turn(90)     # half way
+      drive_base.turn(90)     # three quarters
+      drive_base.turn(90)     # all the way around
+      drive_base.turn(-360)   # now a full spin to the left, in one go
+
+  - type: text
+    markdown: |
+      Turns don't have to be quarter turns. `turn(45)` is **half** of a
+      quarter turn, so the robot drives on a slant. Try other angles, like
+      `30` or `60`!
+
+  - type: challenge
+    id: zig-zag
+    title: Zig-Zag
+    summary: Use 45-degree turns to drive on a slant.
+    world: practice-field
+    start: {x: 1100, y: 650, heading: 0}
+    starter: |
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      drive_base.turn(45)       # slant down to the right
+      drive_base.straight(300)
+      drive_base.turn(-90)      # slant up to the right
+      drive_base.straight(300)
+      drive_base.turn(90)       # slant down again
+      drive_base.straight(300)
+
+  - type: text
+    markdown: |
       ## Plan your path
 
       Programs run one line after another, so a path is a **sequence** of
       moves: drive, turn, drive, turn... Robot programmers often sketch the
-      path on paper first. Try it with this challenge!
+      path on paper first.
+
+      Here's a path to sketch: a square. Each side is 300 mm, and after
+      each side the robot turns left. Where does it finish?
+
+  - type: challenge
+    id: drive-a-square
+    title: Drive a Square
+    summary: Four sides and four turns bring the robot back home.
+    world: practice-field
+    start: {x: 1100, y: 650, heading: 0}
+    starter: |
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      drive_base.straight(300)
+      drive_base.turn(-90)
+      drive_base.straight(300)
+      drive_base.turn(-90)
+      drive_base.straight(300)
+      drive_base.turn(-90)
+      drive_base.straight(300)
+      drive_base.turn(-90)
+
+  - type: text
+    markdown: |
+      Now plan your own path. Try it with this challenge!
 
   - type: challenge
     id: around-the-crate
