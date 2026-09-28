@@ -21,3 +21,7 @@ export const lastChallenge = () => read<string | null>("last-challenge", null);
 export const saveLastChallenge = (challengeId: string) => write("last-challenge", challengeId);
 export const soundOn = () => read<boolean>("sound", true);
 export const saveSoundOn = (on: boolean) => write("sound", on);
+/** Attachments picked for each run of a Mission Mode challenge. */
+export const missionPicks = (challengeId: string) => read<Record<string, string>[]>(`mission-picks:${challengeId}`, []);
+export const saveMissionPicks = (challengeId: string, picks: Record<string, string>[]) =>
+  write(`mission-picks:${challengeId}`, picks);

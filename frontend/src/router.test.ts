@@ -16,6 +16,13 @@ describe("parseRoute", () => {
     expect(parseRoute("#/%")).toEqual({ page: "map" });
   });
 
+  it("reads Mission Mode pages", () => {
+    expect(parseRoute("#/missions")).toEqual({ page: "missions" });
+    expect(parseRoute("#/missions/ring-the-bell")).toEqual({ page: "mission", challengeId: "ring-the-bell" });
+    expect(href({ page: "mission", challengeId: "ring-the-bell" })).toBe("#/missions/ring-the-bell");
+    expect(href({ page: "missions" })).toBe("#/missions");
+  });
+
   it("reads back what href writes", () => {
     const route = { page: "member", teamId: 7, username: "Kid/With%Odd name" } as const;
     expect(parseRoute(href(route))).toEqual(route);

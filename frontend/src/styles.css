@@ -2010,3 +2010,225 @@ kbd {
   border-radius: 5px;
   background: var(--bg);
 }
+
+/* --- Mission Mode ---------------------------------------------------------------------- */
+
+.eyebrow {
+  margin: 0 0 2px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.mission-hero {
+  background: linear-gradient(135deg, var(--warning-soft), var(--card) 70%);
+}
+
+.tile-stars {
+  color: #d99a00;
+  letter-spacing: 0.1em;
+  font-size: 1.05rem;
+}
+
+.tile-stars.none {
+  color: var(--border);
+}
+
+.lesson-tile.locked {
+  cursor: not-allowed;
+  opacity: 0.6;
+  background: var(--bg);
+}
+
+.lesson-tile.locked:hover {
+  border-color: var(--border);
+  transform: none;
+}
+
+.locked-card {
+  text-align: center;
+}
+
+.mission-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 4px 0 12px;
+  color: var(--muted);
+}
+
+.mission-crumbs a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.crumb-stars {
+  margin-left: auto;
+  color: #d99a00;
+  letter-spacing: 0.1em;
+}
+
+.attachment-plan h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.plan-runs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.plan-run {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.plan-run-name {
+  font-weight: 700;
+  min-width: 5.5em;
+}
+
+.plan-attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.2em 0.6em;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+}
+
+.plan-attachment select {
+  font: inherit;
+  font-weight: 700;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  padding: 0.1em 0.3em;
+}
+
+.plan-none {
+  color: var(--muted);
+}
+
+.plan-notes {
+  margin: 8px 0 0;
+  padding-left: 1.2em;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.star-targets {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.star-targets span {
+  padding: 0.15em 0.7em;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.star-targets span.got {
+  border-color: #d99a00;
+  background: var(--warning-soft);
+  color: var(--text);
+  font-weight: 700;
+}
+
+.score-row {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.score-total {
+  font-size: 1.8rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.tokens {
+  display: flex;
+  gap: 4px;
+  padding: 6px 0;
+}
+
+.token {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #d99a00;
+  border: 2px solid #a16207;
+}
+
+.token.lost {
+  background: transparent;
+  border-color: var(--border);
+}
+
+.score-sheet {
+  width: 100%;
+  margin-top: 10px;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.score-sheet td {
+  padding: 3px 6px;
+  border-top: 1px solid var(--border);
+}
+
+.score-sheet tr.scored td:first-child {
+  color: var(--success);
+  font-weight: 700;
+}
+
+.score-sheet .points {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.score-sheet tr.total td {
+  font-weight: 800;
+  border-top: 2px solid var(--text);
+}
+
+.seed-results {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 10px 0 0;
+}
+
+.seed-results span {
+  padding: 0.15em 0.7em;
+  border-radius: 999px;
+  font-size: 0.9rem;
+}
+
+.seed-results .pass {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.seed-results .fail {
+  background: var(--danger-soft);
+  color: var(--danger);
+}

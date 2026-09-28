@@ -6,6 +6,8 @@ import { useRunnerStatus } from "./sim/instance";
 import { AccountPage, SignInPage, SignUpPage } from "./pages/AuthPages";
 import { CourseMap } from "./pages/CourseMap";
 import { LessonPage } from "./pages/LessonPage";
+import { MissionPage } from "./pages/MissionPage";
+import { MissionsPage } from "./pages/MissionsPage";
 import { PlaygroundPage } from "./pages/PlaygroundPage";
 import { MemberPage, TeamPage, TeamsPage } from "./pages/TeamPages";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -49,8 +51,9 @@ function Shell() {
   }, [route]);
 
   const inPlayground = route.page === "playground";
+  const inMissions = route.page === "missions" || route.page === "mission";
   const inTeams = route.page === "teams" || route.page === "team" || route.page === "member";
-  const inLessons = !inPlayground && !inTeams;
+  const inLessons = !inPlayground && !inMissions && !inTeams;
   return (
     <div className="app">
       <header className="topbar">
@@ -63,6 +66,9 @@ function Shell() {
           </a>
           <a href="#/playground" className={inPlayground ? "active" : ""} aria-current={inPlayground ? "page" : undefined}>
             🎮 Playground
+          </a>
+          <a href="#/missions" className={inMissions ? "active" : ""} aria-current={inMissions ? "page" : undefined}>
+            🏆 Missions
           </a>
           {(usesTeamPages(me) || inTeams) && (
             <a href="#/teams" className={inTeams ? "active" : ""} aria-current={inTeams ? "page" : undefined}>
@@ -101,6 +107,8 @@ function Shell() {
           {route.page === "map" && <CourseMap />}
           {route.page === "lesson" && <LessonPage lessonId={route.lessonId} pageNumber={route.pageNumber} />}
           {route.page === "playground" && <PlaygroundPage challengeId={route.challengeId} />}
+          {route.page === "missions" && <MissionsPage />}
+          {route.page === "mission" && <MissionPage challengeId={route.challengeId} />}
           {route.page === "signin" && <SignInPage />}
           {route.page === "signup" && <SignUpPage />}
           {route.page === "account" && <AccountPage />}

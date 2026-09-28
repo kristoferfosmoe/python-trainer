@@ -33,10 +33,17 @@ export interface LessonProgress {
   finished: boolean; // reached the end of the lesson
 }
 
+/** Best result on a Mission Mode challenge. Only ever goes up. */
+export interface MissionResult {
+  stars: number;
+  best_score: number;
+}
+
 interface Saved {
   lessons: Record<string, LessonProgress>;
   solved: string[];
   drafts: Record<string, string>;
+  missions: Record<string, MissionResult>;
 }
 
 export interface SessionState extends Saved {
@@ -49,7 +56,7 @@ export interface SessionState extends Saved {
 }
 
 const GUEST_KEY = "guest:v1";
-const EMPTY: Saved = { lessons: {}, solved: [], drafts: {} };
+const EMPTY: Saved = { lessons: {}, solved: [], drafts: {}, missions: {} };
 const listeners = new Set<() => void>();
 let state: SessionState = { ...EMPTY, me: null, unsaved: false, signedOut: false, restored: false };
 
@@ -84,7 +91,7 @@ function readGuest(): Saved {
 
 /** Progress saved by earlier versions of the app (before accounts). */
 function migrateOldStorage(): Saved {
-  const saved: Saved = { lessons: {}, solved: [], drafts: {} };
+  const saved: Saved = { lessons: {}, solved: [], drafts: {}, missions: {} };
   try {
     saved.lessons = JSON.parse(localStorage.getItem("progress:v1") ?? "{}");
     saved.solved = JSON.parse(localStorage.getItem("solved") ?? "[]");
@@ -121,10 +128,11 @@ function clearGuest() {
 }
 
 const hasProgress = (saved: Saved) =>
-  Object.keys(saved.lessons).length > 0 || saved.solved.length > 0 || Object.keys(saved.drafts).length > 0;
+  Object.keys(saved.lessons).length > 0 || saved.solved.length > 0 || Object.keys(saved.drafts).length > 0 ||
+  Object.keys(saved.missions).length > 0;
 
 function persistGuest() {
-  if (!state.me) writeGuest({ lessons: state.lessons, solved: state.solved, drafts: state.drafts });
+  if (!state.me) writeGuest({ lessons: state.lessons, solved: state.solved, drafts: state.drafts, missions: state.missions });
 }
 
 // --- Server sync -----------------------------------------------------------------
@@ -256,7 +264,7 @@ export const dismissRestored = () => set({ restored: false });
 
 async function loadAccount(user: Me) {
   const saved = await api<Saved>("/me/state");
-  set({ ...saved, me: user, unsaved: unsent.size > 0 });
+  set({ ...EMPTY, ...saved, me: user, unsaved: unsent.size > 0 });
 }
 
 async function afterSignIn(user: Me) {
@@ -390,4 +398,21 @@ export function recordAttempt(attempt: AttemptData) {
     }
   }
   save(`attempt:${seq + 1}`, "/attempts", "POST", attempt);
+}
+
+// --- Mission Mode results --------------------------------------------------------------------
+
+export function missionResult(challengeId: string): MissionResult {
+  return state.missions[challengeId] ?? { stars: 0, best_score: 0 };
+}
+
+/** Keep the best stars and score for a mission challenge (never lowers them). */
+export function recordMissionResult(challengeId: string, stars: number, score: number) {
+  const before = missionResult(challengeId);
+  const after = { stars: Math.max(before.stars, stars), best_score: Math.max(before.best_score, score) };
+  if (state.missions[challengeId] && after.stars === before.stars && after.best_score === before.best_score) return;
+  set({ missions: { ...state.missions, [challengeId]: after } });
+  if (state.me) {
+    save(`mission:${challengeId}`, `/missions/challenges/${encodeURIComponent(challengeId)}/progress`, "PUT", { stars, score });
+  } else persistGuest();
 }
