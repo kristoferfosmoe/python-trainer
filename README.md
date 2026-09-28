@@ -15,6 +15,9 @@ When it works, **🤖 Run on your robot** gets the code ready for
   cards, PIN resets, mentors, and each student's code,
 - running lesson code on a real robot through Pybricks,
 - lesson editing in the admin,
+- **Mission Mode** (the 🏆 Missions tab): an FLL-style robot game with
+  mission models, attachments, 2:30 matches and a 17-challenge ladder
+  ([docs/MISSION_MODE.md](docs/MISSION_MODE.md)),
 - deployment to AWS: every merge to `main` is tested, built and deployed
   by itself, with automatic rollback.
 
@@ -26,10 +29,10 @@ Next up: an AI tutor and a friendlier lesson editor. See
 
 | Folder | What it is |
 |---|---|
-| `sim/` | The robot simulator in Python: a Pybricks-compatible API (`pybricks.*`) plus the physics, sensors and kid-friendly error messages. It runs in the browser through Pyodide. `trainer_content` loads and checks lessons. |
+| `sim/` | The robot simulator in Python: a Pybricks-compatible API (`pybricks.*`) plus the physics, sensors and kid-friendly error messages. It runs in the browser through Pyodide. `trainer_sim.missions` adds Mission Mode (attachments, mission models, scoring, matches). `trainer_content` loads and checks lessons and mission games. |
 | `backend/` | Django + Django Ninja: sign-up and sign-in, teams and join codes, lessons served from the database, progress and saved code, and the admin where teachers edit lessons. |
 | `frontend/` | The web app: React + TypeScript + Vite. It has the course map, the lesson player, the step-by-step visualizer, quizzes, the CodeMirror editor, the mat renderer and playback. |
-| `content/` | The course (`courses/`), the playground challenges, the practice mats (worlds) and the robot, all as YAML files. They're imported into the database. |
+| `content/` | The course (`courses/`), the playground challenges, the practice mats (worlds), the robots and the Mission Mode games (`missions/`), all as YAML files. They're imported into the database. |
 | `deploy/` | Docker images, Docker Compose (Caddy + Django + the lesson checker + PostgreSQL), the deploy and backup scripts, and `aws/`: the CloudFormation stack for AWS. |
 | `docs/` | Architecture, decisions and the deployment guide. |
 
@@ -59,7 +62,7 @@ browser. Locally the backend uses SQLite. In production it uses PostgreSQL.
 ## Tests
 
 ```bash
-# Simulator: physics, sensors, errors, and every lesson and challenge
+# Simulator: physics, sensors, errors, Mission Mode, and every lesson, challenge and mission
 cd sim && uv run pytest
 
 # Backend: accounts, PIN protection, teams and coach tools, lessons, progress, admin checks
@@ -69,7 +72,7 @@ cd backend && uv run pytest
 cd frontend && npm run typecheck && npm test && npm run build
 
 # Browser tests: starts Django and Vite, runs real Python in Chromium,
-# runs every lesson and playground solution, and walks through the coach tools
+# runs every lesson, playground and mission solution, and walks through the coach tools
 cd frontend && npx playwright install chromium && npm run test:e2e
 ```
 
