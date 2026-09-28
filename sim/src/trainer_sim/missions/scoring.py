@@ -25,7 +25,7 @@ from ..goals import check_goal
 from ..shapes import ShapeError
 
 CONDITION_KEYS = ("model", "models", "state", "in_zone", "not_in_zone", "presses")
-MISSION_GOALS = ("mission_done", "min_score", "model_state")
+MISSION_GOALS = ("mission_done", "min_score", "model_state", "model_in_zone")
 DEFAULT_TOKENS = {"start": 6, "points": [0, 10, 15, 25, 35, 50, 50]}
 
 
@@ -163,15 +163,28 @@ class Scorer:
             if mission is None:
                 raise ShapeError(f"mission_done: no mission '{spec.get('mission')}' on this field")
             points = self.mission_points(mission)
-            label = label or f"Score {mission['id']}: {mission.get('title', mission['id'])}"
-            passed = points > 0
-            detail = "" if passed else "No points for this mission yet."
+            need = int(spec.get("points", 1))
+            title = f"{mission['id']}: {mission.get('title', mission['id'])}"
+            label = label or (f"Score {title}" if "points" not in spec else f"Score {need} points for {title}")
+            passed = points >= need
+            detail = "" if passed else ("No points for this mission yet." if not points else f"You got {points}.")
         elif kind == "min_score":
             need = int(spec["points"])
             total = self.total()
             label = label or f"Score at least {need} points"
             passed = total >= need
             detail = "" if passed else f"You scored {total}."
+        elif kind == "model_in_zone":
+            model = self.field.models.get(spec.get("model"))
+            if model is None:
+                raise ShapeError(f"model_in_zone: no model '{spec.get('model')}' on this field")
+            zone = self.world.zones.get(spec.get("zone"))
+            if zone is None:
+                raise ShapeError(f"model_in_zone: no zone '{spec.get('zone')}'")
+            label = label or f"Get the {model.label} into {zone.label or zone.id}"
+            where = model.position()
+            passed = where is not None and zone.contains(*where)
+            detail = "" if passed else "It isn't there."
         else:
             model = self.field.models.get(spec.get("model"))
             if model is None:

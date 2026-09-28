@@ -1,0 +1,15 @@
+# A rack-and-pinion pusher on motor E: it slides straight out the front,
+# 0.5 mm for every degree the motor turns.
+id: pusher
+name: Pusher
+kind: slide
+port: E
+summary: Slides out the front, 0.5 mm per degree, up to 100 mm (200°).
+mount: [110, 0]
+length: 10
+width: 50
+z: [10, 50]
+travel: 0.5
+rest_angle: 0
+min_angle: 0
+max_angle: 200

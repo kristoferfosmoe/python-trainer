@@ -1,0 +1,17 @@
+# A lift arm on motor E, sticking out the front. Positive angles raise it.
+# Level (0°) is 15° above its lowest point. Its tip is a hook that can go
+# into a loop and lift it.
+id: forklift
+name: Forklift
+kind: lift
+port: E
+summary: Lifts, pushes and hooks. Level is 0°, up is positive (up to 80°), down to -15°.
+mount: [110, 0]
+mount_z: 60
+length: 130
+width: 40
+thickness: 16
+rest_angle: 0
+min_angle: -15
+max_angle: 80
+hook: {at: 130}

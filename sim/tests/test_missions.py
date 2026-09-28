@@ -384,6 +384,18 @@ def test_two_runs_with_a_button_press_and_an_attachment_swap(game):
     assert result["mission"]["score"]["tokens"] == 3
 
 
+def test_a_run_that_does_nothing_is_over_after_3_seconds(game):
+    code = RUNNER.replace("""    def run_1():
+        drive_base.straight(650)
+        drive_base.straight(-650)""", """    def run_1():
+        wait(300)""")
+    result = play(game, code, ["crate"], runs=TWO_RUNS)
+    no_error(result)
+    runs = result["mission"]["runs"]
+    assert runs[0]["end"] == pytest.approx(500 + 3000, abs=50)
+    assert runs[1]["ended"] == "home"
+
+
 def test_encoders_keep_counting_across_a_swap(game):
     code = RUNNER.replace("def run_1():\n", "def run_1():\n        arm.run_angle(300, 40)\n")
     result = play(game, code, ["crate"], runs=TWO_RUNS)

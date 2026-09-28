@@ -55,11 +55,11 @@ class MissionField:
 
     # --- Attachments --------------------------------------------------------------
 
-    def mount(self, spec):
+    def mount(self, spec, before_start=False):
         motor = self.sim.motors.get(spec.port)
         if motor is None:
             raise ShapeError(f"attachment {spec.id} goes on port {spec.port}, but the robot has no motor there")
-        self.mounts[spec.port] = Mounted(spec, motor)
+        self.mounts[spec.port] = Mounted(spec, motor, before_start)
         self.mount_log.append([self._frame_index(), spec.port, spec.id])
 
     def unmount(self, port):

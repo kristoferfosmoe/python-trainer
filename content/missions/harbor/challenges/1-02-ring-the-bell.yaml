@@ -1,0 +1,46 @@
+id: ring-the-bell
+title: Ring the Bell
+tier: 1
+summary: Press the harbor bell twice.
+runs:
+  - start: {x: 200, y: 150, heading: 0}
+models: [bell]
+time_limit: 30
+instructions: |
+  The harbor bell is at the far end of this lane, **990 mm** in front of the
+  robot. Pressing it once scores **10 points**. Pressing it **twice** scores
+  **20**.
+
+  The bell's button pushes in about 15 mm, then it stops the robot. To press
+  it again, back away a little and drive into it again.
+goals:
+  - {type: mission_done, mission: M02, points: 20}
+hints:
+  - "`drive_base.straight(1000)` presses it once."
+  - "Back up with a negative distance, like `drive_base.straight(-100)`, then drive forward again."
+starter: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+
+  hub = PrimeHub()
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+  drive_base.straight(1000)
+solution: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+
+  hub = PrimeHub()
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+  drive_base.straight(1000)
+  drive_base.straight(-100)
+  drive_base.straight(100)

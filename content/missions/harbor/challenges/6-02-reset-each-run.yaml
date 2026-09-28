@@ -1,0 +1,94 @@
+id: reset-each-run
+title: Fresh Start
+tier: 6
+summary: Between runs the forklift goes back on level, but its motor keeps counting.
+runs:
+  - start: {x: 200, y: 520, heading: 0}
+    attachments: {E: forklift}
+  - start: {x: 200, y: 700, heading: 0}
+    attachments: {E: forklift}
+models: [sample, flag]
+time_limit: 60
+instructions: |
+  Two runs with the forklift: bring the **sample** home, then raise the
+  **flag**.
+
+  Between runs, your teammate takes the sample off the hook and puts the
+  forklift back on **level**. But the motor doesn't know that: it still
+  counts from where the arm was at the end of run 1 (lifted to 45°). So in
+  run 2, `arm.run_target(300, 60)` only lifts it a little.
+
+  Fix it by telling the motor where the arm is at the start of each run:
+
+  ```python
+  arm.reset_angle(0)   # the arm is level right now
+  ```
+goals:
+  - {type: mission_done, mission: M03, points: 30}
+  - {type: model_state, model: flag, state: raised}
+hints:
+  - "Call `arm.reset_angle(0)` as the first line of each run function."
+starter: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction, Button
+  from pybricks.robotics import DriveBase
+  from pybricks.tools import wait
+
+  hub = PrimeHub()
+  hub.system.set_stop_button(Button.BLUETOOTH)  # the center button starts each run
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  arm = Motor(Port.E)
+
+
+  def sample_run():
+      drive_base.straight(560)
+      arm.run_target(300, 45)
+      drive_base.straight(-600)
+
+
+  def flag_run():
+      drive_base.straight(1160)
+      arm.run_target(300, 60)
+      drive_base.straight(-1160)
+
+
+  for run in [sample_run, flag_run]:
+      while Button.CENTER not in hub.buttons.pressed():
+          wait(10)
+      run()
+solution: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction, Button
+  from pybricks.robotics import DriveBase
+  from pybricks.tools import wait
+
+  hub = PrimeHub()
+  hub.system.set_stop_button(Button.BLUETOOTH)  # the center button starts each run
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  arm = Motor(Port.E)
+
+
+  def sample_run():
+      arm.reset_angle(0)
+      drive_base.straight(560)
+      arm.run_target(300, 45)
+      drive_base.straight(-600)
+
+
+  def flag_run():
+      arm.reset_angle(0)
+      drive_base.straight(1160)
+      arm.run_target(300, 60)
+      drive_base.straight(-1160)
+
+
+  for run in [sample_run, flag_run]:
+      while Button.CENTER not in hub.buttons.pressed():
+          wait(10)
+      run()

@@ -44,6 +44,14 @@ def _pair(spec, key, default=None):
     return float(value[0]), float(value[1])
 
 
+def links_of(spec):
+    """A model's `on:` links. (YAML reads a bare `on` key as True, and JSON then writes it as "true".)"""
+    for key in ("on", True, "true"):
+        if key in spec:
+            return spec[key]
+    return None
+
+
 class Part:
     """A shape of a model that things can bump into."""
 
@@ -69,7 +77,7 @@ class Model:
         self.label = spec.get("label", self.id)
         self.hidden = bool(spec.get("hidden", False))
         self.state = self.states[0] if self.states else ""
-        self.links = self._links(spec.get("on") or {})
+        self.links = self._links(links_of(spec) or {})
         self._parts = None
 
     def _links(self, on):

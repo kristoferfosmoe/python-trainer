@@ -1,0 +1,71 @@
+id: follow-the-line
+title: Follow the Line
+tier: 5
+summary: No gyro this time. Follow the black line's edge to the flag.
+runs:
+  - start: {x: 200, y: 690, heading: 0}
+    attachments: {E: forklift}
+models: [flag]
+time_limit: 40
+realism: "on"
+seeds: [1, 2, 3]
+instructions: |
+  The middle lane has a **black line** painted on it. It starts at the edge
+  of Home and ends **1050 mm** ahead. The robot starts with its color
+  sensor right on the line's **bottom edge**.
+
+  This time, **don't use the gyro**: steer with the color sensor. Keep the
+  sensor on the edge, where it sees half black and half white (a
+  reflection of about 53):
+
+  - too dark (on the line): turn right
+  - too bright (off the line): turn left
+
+  When the robot has driven **975 mm**, the line ends. Drive straight the
+  last bit and raise the flag, which is **1400 mm** from the start (the
+  fork reaches 240 mm ahead).
+goals:
+  - {type: model_state, model: flag, state: raised}
+  - {type: min_calls, name: reflection}
+  - {type: max_calls, name: use_gyro, value: 0}
+hints:
+  - "The line starts 150 mm ahead of the robot's center (the sensor is 75 mm ahead of it). Drive that far first."
+  - "A proportional follower: `error = 53 - eyes.reflection()`, then `drive_base.drive(150, error)`, in a `while drive_base.distance() < 975:` loop with `wait(10)`."
+  - "After the loop, `drive_base.straight(185)` brings the fork's tip under the handle."
+starter: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor, ColorSensor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+  from pybricks.tools import wait
+
+  hub = PrimeHub()
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  arm = Motor(Port.E)
+  eyes = ColorSensor(Port.C)
+
+  drive_base.straight(1160)
+  arm.run_target(300, 60)
+solution: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor, ColorSensor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+  from pybricks.tools import wait
+
+  hub = PrimeHub()
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  arm = Motor(Port.E)
+  eyes = ColorSensor(Port.C)
+
+  drive_base.straight(150)
+  while drive_base.distance() < 975:
+      error = 53 - eyes.reflection()
+      drive_base.drive(150, error)
+      wait(10)
+  drive_base.straight(185)
+  arm.run_target(300, 60)

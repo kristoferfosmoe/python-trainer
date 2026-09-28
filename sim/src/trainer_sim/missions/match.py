@@ -5,8 +5,8 @@ several runs, the program waits in Home for a button press before each run
 (lesson 11's mission runner), and the simulator plays the teammate:
 
 - Before run 1 it presses the start button at 0.5 s.
-- When the robot has come back and stopped in Home for 0.5 s, the run is
-  over: it takes off anything the robot carried, puts the robot on the next
+- When the robot has come back and stopped in Home for 0.5 s (or never
+  left and sat still for 3 s), the run is over: it takes off anything the robot carried, puts the robot on the next
   run's start spot, swaps the attachments (the handling time passes), and
   presses the button.
 - If the robot stops outside Home for 3 s, that's an interruption: the team
@@ -27,6 +27,7 @@ from ..shapes import ShapeError
 from ..sim import Simulation
 from .attachments import AttachmentSpec
 from .contacts import MissionField
+from .models import links_of
 from .scoring import Scorer
 
 FIRST_PRESS_MS = 500
@@ -56,7 +57,7 @@ class Teammate:
         self.log = []
 
     def begin(self):
-        self._mount(0)
+        self._mount(0, before_start=True)
         start = 0.0
         if len(self.runs) > 1:
             start = FIRST_PRESS_MS
@@ -64,11 +65,11 @@ class Teammate:
             self.waiting_until = start
         self._log_start(start)
 
-    def _mount(self, index):
+    def _mount(self, index, before_start=False):
         for port in list(self.field.mounts):
             self.field.unmount(port)
         for spec in self.runs[index][1].values():
-            self.field.mount(spec)
+            self.field.mount(spec, before_start)
 
     def _press(self, at):
         self.sim.button_presses.append({"at": at, "button": self.button, "duration": PRESS_MS})
@@ -104,6 +105,8 @@ class Teammate:
         still = t - self.still_since
         if in_home and self.left_home and still >= HOME_STILL_MS:
             self._end_run("home")
+        elif in_home and not self.left_home and still >= STUCK_MS:
+            self._end_run("home")  # the run did nothing; the teammate moves on
         elif not in_home and self.interrupts_while_running and still >= STUCK_MS:
             self._end_run("interrupted")
 
@@ -199,7 +202,7 @@ def resolve(game, challenge, choices=None):
     all_models = game.get("models", [])
     known = {m.get("id") for m in all_models if isinstance(m, dict)}
     for model in all_models:
-        on = model.get("on") if isinstance(model, dict) else None
+        on = links_of(model) if isinstance(model, dict) else None
         for actions in (on.values() if isinstance(on, dict) else []):
             for action in actions if isinstance(actions, list) else [actions]:
                 for target in (action.values() if isinstance(action, dict) else []):
@@ -234,12 +237,16 @@ def resolve(game, challenge, choices=None):
             pick = chosen.get(port, options[0])
             picked[port] = pick if pick in options else options[0]
         specs = {}
+        rest = run.get("rest") or {}
         for port, name in picked.items():
             if name not in attachments:
                 raise ShapeError(f"challenge {challenge.get('id', '?')}: no attachment called '{name}'")
             spec = attachments[name]
             if spec.port != port:
                 raise ShapeError(f"attachment {name} goes on port {spec.port}, not {port}")
+            if port in rest:
+                # Put on at another angle (like an arm left half raised).
+                spec = AttachmentSpec({**spec.raw, "rest_angle": rest[port], "reads": spec.reads})
             specs[port] = spec
         runs.append((start, specs))
 

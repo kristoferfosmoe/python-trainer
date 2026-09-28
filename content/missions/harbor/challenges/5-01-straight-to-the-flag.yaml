@@ -1,0 +1,57 @@
+id: straight-to-the-flag
+title: Straight to the Flag
+tier: 5
+summary: Real-world wobble is on. Use the gyro to reach the flag every time.
+runs:
+  - start: {x: 200, y: 700, heading: 0}
+    attachments: {E: forklift}
+models: [flag]
+time_limit: 30
+realism: "on"
+seeds: [1, 2, 3]
+instructions: |
+  Real robots don't drive perfectly straight: one wheel is a tiny bit
+  smaller, and the wheels slip. **Real-world wobble is on** for this
+  challenge, and your program runs **3 times**. It has to raise the flag
+  **every time**.
+
+  The starter code is the solution from *Raise the Flag*. Run it and watch
+  where the robot ends up. Then turn on the gyro, so the drive base steers
+  itself straight:
+
+  ```python
+  drive_base.use_gyro(True)
+  ```
+goals:
+  - {type: model_state, model: flag, state: raised}
+hints:
+  - "Put `drive_base.use_gyro(True)` right after you make the drive base."
+starter: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+
+  hub = PrimeHub()
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  arm = Motor(Port.E)
+
+  drive_base.straight(1160)
+  arm.run_target(300, 60)
+solution: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+
+  hub = PrimeHub()
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  arm = Motor(Port.E)
+  drive_base.use_gyro(True)
+
+  drive_base.straight(1160)
+  arm.run_target(300, 60)

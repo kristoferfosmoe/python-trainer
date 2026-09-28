@@ -1,0 +1,56 @@
+id: raise-the-flag
+title: Raise the Flag
+tier: 2
+summary: Get the forklift under the flag's handle and lift.
+runs:
+  - start: {x: 200, y: 700, heading: 0}
+    attachments: {E: forklift}
+models: [flag]
+time_limit: 30
+instructions: |
+  Your robot has its first **attachment**: a **forklift** on motor **E**.
+  It's an ordinary motor, so you control it like one:
+
+  ```python
+  arm = Motor(Port.E)
+  arm.run_target(300, 60)   # lift to 60 degrees (speed 300 deg/s)
+  arm.run_target(300, 0)    # back down to level
+  ```
+
+  At **0°** the fork is level and reaches **240 mm** ahead of the robot's
+  center. The **flag's handle** is **1400 mm** ahead of the robot's center.
+
+  Drive until the tip of the fork is **under the handle**, then lift the
+  arm to raise the flag.
+goals:
+  - {type: model_state, model: flag, state: raised}
+hints:
+  - "The fork's tip is 240 mm ahead of the robot's center, so drive 1400 - 240 = 1160 mm."
+  - "Lift to at least 45 degrees: `arm.run_target(300, 60)`."
+starter: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+
+  hub = PrimeHub()
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  arm = Motor(Port.E)
+
+  drive_base.straight(1160)
+solution: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+
+  hub = PrimeHub()
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+  arm = Motor(Port.E)
+
+  drive_base.straight(1160)
+  arm.run_target(300, 60)

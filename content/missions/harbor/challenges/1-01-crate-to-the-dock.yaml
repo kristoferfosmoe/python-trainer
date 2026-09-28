@@ -1,0 +1,46 @@
+id: crate-to-the-dock
+title: Crate to the Dock
+tier: 1
+summary: Push the crate onto the yellow dock.
+runs:
+  - start: {x: 200, y: 330, heading: 0}
+models: [crate]
+time_limit: 30
+instructions: |
+  Welcome to **Harbor Rescue**! Every mission starts in **Home**, the blue
+  area on the left.
+
+  A crate is waiting **400 mm** in front of your robot. Push it until it's
+  on the **yellow dock**. The dock starts **690 mm** in front of the robot
+  and is 300 mm long, so aim for the middle.
+
+  The crate only counts if its **center** is on the dock.
+goals:
+  - {type: mission_done, mission: M01}
+hints:
+  - "The robot pushes the crate with its front. When the robot has driven 400 mm, it's touching the crate."
+  - "To move the crate's center 400 mm, the robot drives 400 + 400 = 800 mm."
+starter: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+
+  hub = PrimeHub()
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+  drive_base.straight(300)
+solution: |
+  from pybricks.hubs import PrimeHub
+  from pybricks.pupdevices import Motor
+  from pybricks.parameters import Port, Direction
+  from pybricks.robotics import DriveBase
+
+  hub = PrimeHub()
+  left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+  right_motor = Motor(Port.B)
+  drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+  drive_base.straight(800)

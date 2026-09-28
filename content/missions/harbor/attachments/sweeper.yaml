@@ -1,0 +1,16 @@
+# A side arm on motor F, on the robot's left. It swings across the mat at a
+# fixed height. 0° points straight out to the left; positive swings it
+# forward (90° folds it along the robot's side, pointing ahead).
+id: sweeper
+name: Sweeper
+kind: sweep
+port: F
+summary: Swings out to the left. 0° points left, 90° is folded forward.
+mount: [80, 70]
+direction: -90
+length: 100
+width: 20
+z: [20, 60]
+rest_angle: 90
+min_angle: -20
+max_angle: 90

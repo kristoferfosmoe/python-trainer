@@ -70,6 +70,10 @@ class AttachmentSpec:
                 raise ShapeError(f"attachment {self.id}: z must be [low, high]")
             self.hook_at = None
         self.travel = _num(spec, "travel", 0.5) if self.kind == "slide" else 0.0
+        # What the motor reads when a program starts with this attachment on.
+        # Normally its resting angle; a challenge can put an attachment on at
+        # another angle without the motor knowing (see match.resolve).
+        self.reads = _num(spec, "reads", self.rest_angle)
         self.raw = spec
 
     def to_dict(self):
@@ -79,12 +83,16 @@ class AttachmentSpec:
 class Mounted:
     """An attachment on a motor, for one run (until the teammate swaps it)."""
 
-    def __init__(self, spec, motor):
+    def __init__(self, spec, motor, before_start=False):
         self.spec = spec
         self.port = spec.port
         self.motor = motor
-        # The attachment goes on at its resting angle, wherever the motor's
-        # encoder happens to be; the encoder keeps counting from there.
+        if before_start:
+            # Motors know their position when a program starts (SPIKE motors
+            # have absolute encoders), so the motor reads the resting angle.
+            motor.angle = spec.reads * spec.gears
+        # Swapped on during a match, the attachment goes on at its resting
+        # angle wherever the encoder is; the encoder keeps counting.
         self.zero = motor.angle
         motor.min_angle = self.zero + (spec.min_angle - spec.rest_angle) * spec.gears
         motor.max_angle = self.zero + (spec.max_angle - spec.rest_angle) * spec.gears
