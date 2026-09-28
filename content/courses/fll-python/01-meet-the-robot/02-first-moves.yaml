@@ -54,6 +54,80 @@ blocks:
       fun part: `drive_base.straight(300)` drives **300 millimeters** forward.
       A **negative** number drives backward.
 
+  - type: challenge
+    id: out-and-back
+    title: Out and Back
+    summary: Drive out, then back up to where you started.
+    world: practice-field
+    starter: |
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      drive_base.straight(600)    # forward 600 mm
+      drive_base.straight(-600)   # backward 600 mm, back to the start
+
+  - type: text
+    markdown: |
+      Moves happen **one after another**, and they add up. Three drives of
+      100 mm take the robot just as far as one drive of 300 mm. Count the grid
+      squares as it goes!
+
+  - type: challenge
+    id: small-steps
+    title: Small Steps
+    summary: Add up short drives into one long trip.
+    world: practice-field
+    starter: |
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      drive_base.straight(100)
+      drive_base.straight(100)
+      drive_base.straight(100)    # 300 mm so far
+      drive_base.straight(300)    # 600 mm in total
+
+  - type: text
+    markdown: |
+      Sometimes the robot needs to **wait**, like giving an arm time to drop
+      or letting a teammate see what happened. `wait(1000)` pauses for
+      **1000 milliseconds**, which is 1 second. It comes from
+      `pybricks.tools`, so there's one more `import` line.
+
+  - type: challenge
+    id: pause-between-moves
+    title: Pause Between Moves
+    summary: Stop for a moment between drives.
+    world: practice-field
+    starter: |
+      from pybricks.pupdevices import Motor
+      from pybricks.parameters import Port, Direction
+      from pybricks.robotics import DriveBase
+      from pybricks.tools import wait
+
+      left_motor = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+      right_motor = Motor(Port.B)
+      drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)
+
+      drive_base.straight(400)
+      wait(1000)                  # wait 1 second
+      drive_base.straight(-200)
+      wait(2000)                  # wait 2 seconds
+      drive_base.straight(400)
+
+  - type: text
+    markdown: |
+      Now check what you learned.
+
   - type: quiz
     id: backwards
     question: Which line drives the robot **backward 20 centimeters**? (1 cm = 10 mm)
