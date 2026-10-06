@@ -1,3 +1,5 @@
+> **Retired.** Python Trainer is no longer deployed. To remove what this guide set up, see [TEARDOWN.md](TEARDOWN.md).
+
 # Deploying Python Trainer on AWS
 
 This guide puts the site on one EC2 server with HTTPS, and sets up
