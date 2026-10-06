@@ -1,4 +1,4 @@
-> **Retired.** Python Trainer has moved into [Spellbound](https://github.com/kristoferfosmoe/spelling-app) as its **Code** classroom. The simulator and lessons live in `spelling-app/code/` (with this repository's history), and Spellbound's server stores students' work. This repository is kept read-only for reference; it was only used for early testing, so no accounts or progress were moved.
+> **Retired.** Python Trainer has moved into [Spellbound](https://github.com/kristoferfosmoe/spelling-app) as its **Code** classroom. The simulator and lessons live in `spelling-app/code/` (with this repository's history), and Spellbound's server stores students' work. This repository is kept read-only for reference; it was only used for early testing, so no accounts or progress were moved. Its servers are being switched off: see [docs/TEARDOWN.md](docs/TEARDOWN.md).
 
 # Python Trainer
 

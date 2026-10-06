@@ -1,13 +1,11 @@
-# Tests on every push and pull request. On a merge to main, once everything
-# passes, the images are pushed to the registry and deployed (deploy.yml).
-# Deploying is off until the repository variable DEPLOY_TO_AWS is "true"
-# (see docs/DEPLOY.md).
+# Tests on every push and pull request. Python Trainer is retired, so nothing
+# is pushed or deployed any more (see docs/TEARDOWN.md).
 name: CI
 
 on:
   push:
   pull_request:
-  workflow_dispatch: # run it on main by hand for the first deploy
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -92,48 +90,3 @@ jobs:
           docker build -f deploy/Dockerfile --target web -t python-trainer-web .
           docker build -f deploy/Dockerfile --target caddy -t python-trainer-caddy .
 
-  publish:
-    name: Push images to the registry
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.DEPLOY_TO_AWS == 'true'
-    needs: [simulator, backend, frontend, images]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write # to sign in to AWS
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Show who GitHub says this job is (AWS checks this)
-        continue-on-error: true
-        run: python3 deploy/aws/github-identity.py
-      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
-        with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
-      - uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
-      - name: Build and push the web and caddy images for this commit
-        env:
-          IMAGE_REPO: ${{ vars.IMAGE_REPO }}
-          VERSION: ${{ github.sha }}
-        run: |
-          IMAGE_REPO=${IMAGE_REPO//[[:space:]]/} # stray spaces from pasting
-          for target in web caddy; do
-            image="$IMAGE_REPO/$target:$VERSION"
-            # Tags can't be overwritten, so a re-run skips images already pushed.
-            if aws ecr describe-images --repository-name "${IMAGE_REPO#*/}/$target" \
-                --image-ids imageTag="$VERSION" > /dev/null 2>&1; then
-              echo "$image is already in the registry"
-              continue
-            fi
-            docker build -f deploy/Dockerfile --target "$target" --build-arg APP_VERSION="$VERSION" -t "$image" .
-            docker push "$image"
-          done
-
-  deploy:
-    name: Deploy
-    needs: publish
-    permissions:
-      contents: read
-      id-token: write
-    uses: ./.github/workflows/deploy.yml
-    with:
-      version: ${{ github.sha }}
